@@ -1,0 +1,58 @@
+/* Message Alert Styles */
+.message-alert {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.message-error {
+    background-color: #f44336;
+    color: white;
+}
+
+.message-success {
+    background-color: #4caf50;
+    color: white;
+}
+
+.message-info {
+    background-color: #2196f3;
+    color: white;
+}
+
+.close-message {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    margin-left: 15px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.close-message:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
