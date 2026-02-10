@@ -7,7 +7,8 @@ import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/CheckStatus.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 
 const CheckStatus = () => {
   const navigate = useNavigate();
@@ -105,7 +106,7 @@ const CheckStatus = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/students/check-auth`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -209,7 +210,7 @@ const CheckStatus = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/students/update-profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updatedData),
@@ -247,7 +248,7 @@ const CheckStatus = () => {
     const token = getToken();
     try {
       if (token) {
-        await fetch(`${API_BASE}/api/students/logout`, {
+        await fetch(`${API_BASE_URL}/api/students/logout`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -265,7 +266,7 @@ const CheckStatus = () => {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/outpass/history`, {
+      const res = await fetch(`${API_BASE_URL}/api/outpass/history`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -396,7 +397,7 @@ const CheckStatus = () => {
     const token = getToken();
 
     try {
-      const res = await fetch(`${API_BASE}/api/outpass/cancel/${mongoId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/outpass/cancel/${mongoId}`, {
   method: "DELETE",
   headers: { Authorization: `Bearer ${token}` },
 });

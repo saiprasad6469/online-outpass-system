@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
-
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const AdminSignup = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -177,7 +177,7 @@ const AdminSignup = () => {
         setLoading(true);
         
         try {
-            const response = await fetch('http://localhost:5000/api/admin/register', {
+            const response = await fetch('${API_BASE_URL}/api/admin/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

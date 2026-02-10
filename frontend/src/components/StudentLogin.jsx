@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
-
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const StudentLogin = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -50,7 +50,7 @@ const StudentLogin = () => {
         try {
             console.log('Sending login request...');
             
-            const response = await fetch('http://localhost:5000/api/auth/login', {
+            const response = await fetch('${API_BASE_URL}/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

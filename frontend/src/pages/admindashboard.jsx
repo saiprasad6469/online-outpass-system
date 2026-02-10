@@ -4,6 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 
+// ✅ CRA: Backend base URL from Render environment variable
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
@@ -18,7 +21,6 @@ const AdminDashboard = () => {
     initials: "AD",
   });
 
-  // ✅ will be updated automatically from backend (top cards + two boxes)
   const [dashboardStats, setDashboardStats] = useState({
     totalRequests: 0,
     approved: 0,
@@ -36,7 +38,6 @@ const AdminDashboard = () => {
     systemStatus: "All Systems Normal",
   });
 
-  // ✅ show only 3 recent requests
   const [recentRequests, setRecentRequests] = useState([]);
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -222,8 +223,16 @@ const AdminDashboard = () => {
       localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
     if (!token) return;
 
+    // ✅ Safety: if env var missing, you’ll instantly know what to fix
+    if (!API_BASE_URL) {
+      console.error(
+        "REACT_APP_API_BASE_URL is missing. Add it in Render Static Site env vars and redeploy."
+      );
+      return;
+    }
+
     try {
-      const res = await fetch("http://localhost:5000/api/admin/outpasses", {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -245,8 +254,7 @@ const AdminDashboard = () => {
 
       // ✅ stats (top cards)
       const statsFromBackend = data.stats || {};
-      const totalRequests =
-        statsFromBackend.totalRequests ?? all.length;
+      const totalRequests = statsFromBackend.totalRequests ?? all.length;
 
       const approved =
         statsFromBackend.approved ??
@@ -261,7 +269,6 @@ const AdminDashboard = () => {
         all.filter((x) => String(x.status).toLowerCase() === "rejected").length;
 
       // ✅ Auto-update the two boxes below Recent Requests
-      // NOTE: These are computed from the same outpass list
       const now = new Date();
       const isSameDay = (a, b) =>
         a.getFullYear() === b.getFullYear() &&
@@ -283,8 +290,6 @@ const AdminDashboard = () => {
         );
       }).length;
 
-      // If your backend doesn't send return date/time, todayReturn can't be calculated accurately.
-      // So we keep it as 0 (or you can keep previous).
       const todayReturn = 0;
 
       setDashboardStats((prev) => ({
@@ -297,9 +302,6 @@ const AdminDashboard = () => {
         todayOut,
         todayReturn,
         monthRequests,
-
-        // keep these as-is unless you later add backend support
-        // activeStudents, notifications, warnings, holidays, systemStatus
       }));
     } catch (err) {
       console.error("Admin fetch error:", err);
@@ -489,10 +491,7 @@ const AdminDashboard = () => {
                 <tbody>
                   {recentRequests.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan="5"
-                        style={{ textAlign: "center", padding: "16px" }}
-                      >
+                      <td colSpan="5" style={{ textAlign: "center", padding: "16px" }}>
                         No recent requests found
                       </td>
                     </tr>
@@ -501,21 +500,13 @@ const AdminDashboard = () => {
                       const statusInfo = getStatusInfo(request.status);
 
                       const displayName =
-                        request.studentName ||
-                        request.fullName ||
-                        "N/A";
+                        request.studentName || request.fullName || "N/A";
 
                       const displayRoll =
-                        request.rollNo ||
-                        request.rollNumber ||
-                        "-";
+                        request.rollNo || request.rollNumber || "-";
 
-                      const displayDate =
-                        request.outDate ||
-                        request.appliedAt ||
-                        null;
+                      const displayDate = request.outDate || request.appliedAt || null;
 
-                      // ✅ FIX: Purpose must show reasonType from backend / db
                       const displayPurpose =
                         request.reasonType ||
                         request.reason_type ||
@@ -553,8 +544,7 @@ const AdminDashboard = () => {
 
             <div className="table-footer">
               <p className="table-info">
-                Showing <strong>{recentRequests.length}</strong> most recent
-                requests
+                Showing <strong>{recentRequests.length}</strong> most recent requests
               </p>
             </div>
           </section>
@@ -579,8 +569,8 @@ const AdminDashboard = () => {
                   <strong>{dashboardStats.activeStudents}</strong>
                 </li>
                 <li>
-                  <i className="fas fa-calendar-check"></i> This Month's
-                  Requests: <strong>{dashboardStats.monthRequests}</strong>
+                  <i className="fas fa-calendar-check"></i> This Month's Requests:{" "}
+                  <strong>{dashboardStats.monthRequests}</strong>
                 </li>
               </ul>
             </div>
@@ -623,10 +613,7 @@ const AdminDashboard = () => {
           <div className="profile-modal">
             <div className="modal-header">
               <h2>Edit Admin Profile</h2>
-              <button
-                className="close-modal"
-                onClick={() => setShowProfileModal(false)}
-              >
+              <button className="close-modal" onClick={() => setShowProfileModal(false)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>

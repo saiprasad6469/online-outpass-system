@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
-
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const StudentSignup = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -158,7 +158,7 @@ const StudentSignup = () => {
                 section: formData.section
             });
             
-            const response = await fetch('http://localhost:5000/api/auth/register', {
+            const response = await fetch('${API_BASE_URL}/api/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

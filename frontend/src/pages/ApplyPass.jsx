@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/ApplyPass.css";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const ApplyPass = () => {
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ const ApplyPass = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/students/check-auth", {
+      const response = await fetch("${API_BASE_URL}/api/students/check-auth", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -185,7 +186,7 @@ const ApplyPass = () => {
     if (!token) return;
 
     try {
-      const response = await fetch("http://localhost:5000/api/students/profile", {
+      const response = await fetch("${API_BASE_URL}/api/students/profile", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -351,7 +352,7 @@ const ApplyPass = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/students/update-profile", {
+      const response = await fetch("${API_BASE_URL}/api/students/update-profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -403,7 +404,7 @@ const ApplyPass = () => {
 
     try {
       if (token) {
-        await fetch("http://localhost:5000/api/students/logout", {
+        await fetch("${API_BASE_URL}/api/students/logout", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -486,7 +487,7 @@ const ApplyPass = () => {
     });
 
     try {
-      const response = await fetch("http://localhost:5000/api/outpass/apply", {
+      const response = await fetch("${API_BASE_URL}/api/outpass/apply", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

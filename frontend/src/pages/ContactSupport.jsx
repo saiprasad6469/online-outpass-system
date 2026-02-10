@@ -7,7 +7,7 @@ import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/ContactSupport.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const ContactSupport = () => {
   const navigate = useNavigate();
@@ -140,7 +140,7 @@ const ContactSupport = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/students/check-auth`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -276,7 +276,7 @@ const ContactSupport = () => {
     setSending(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/support/contact`, {
+      const res = await fetch(`${API_BASE_URL}/api/support/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

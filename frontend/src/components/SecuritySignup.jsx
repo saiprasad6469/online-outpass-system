@@ -4,7 +4,8 @@ import "../styles/Auth.css";
 import MessageAlert from "./MessageAlert";
 import LoadingSpinner from "./LoadingSpinner";
 
-const API_BASE = "http://localhost:5000";
+// ✅ Use backend base URL from CRA env variable
+const API_BASE = process.env.REACT_APP_API_BASE_URL;
 
 const SecuritySignup = () => {
   const navigate = useNavigate();
@@ -96,6 +97,15 @@ const SecuritySignup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // ✅ Guard: env variable missing
+    if (!API_BASE) {
+      setMessage({
+        text: "Frontend is missing API URL. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy.",
+        type: "error",
+      });
+      return;
+    }
+
     // basic validation
     const required = ["firstName", "lastName", "securityId", "email", "password", "confirmPassword"];
     const missing = required.filter((k) => !String(formData[k] || "").trim());
@@ -159,7 +169,7 @@ const SecuritySignup = () => {
       setTimeout(() => navigate("/security-dashboard"), 700);
     } catch (err) {
       setMessage({
-        text: "Cannot connect to server. Make sure backend is running on http://localhost:5000",
+        text: `Cannot connect to server. Backend URL: ${API_BASE}`,
         type: "error",
       });
     } finally {

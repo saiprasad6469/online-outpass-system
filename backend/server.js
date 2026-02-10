@@ -13,6 +13,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use(cors({
+  origin: ["https://online-outpass-system.onrender.com"],
+  credentials: true
+}));
+
 // Serve uploaded files (documents)
 app.use("/uploads", express.static("uploads"));
 

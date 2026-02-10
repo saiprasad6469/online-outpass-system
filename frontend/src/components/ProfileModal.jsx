@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import '../styles/Dashboard.css';
-
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const ProfileModal = ({ 
     user, 
     setUser, 
@@ -35,7 +35,7 @@ const ProfileModal = ({
                 return;
             }
 
-            const response = await fetch('http://localhost:5000/api/students/sections', {
+            const response = await fetch('${API_BASE_URL}/api/students/sections', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

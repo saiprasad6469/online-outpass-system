@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 import "../styles/ManageRequests.css";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const AdminManageRequests = () => {
   const navigate = useNavigate();
@@ -126,7 +127,7 @@ const AdminManageRequests = () => {
     if (!token) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/outpasses", {
+      const res = await fetch("${API_BASE_URL}/api/admin/outpasses", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -221,7 +222,7 @@ const AdminManageRequests = () => {
     if (!filePath) return null;
     if (/^https?:\/\//i.test(filePath)) return filePath;
     const normalized = filePath.startsWith("/") ? filePath : `/${filePath}`;
-    return `http://localhost:5000${normalized}`;
+    return `${API_BASE_URL}${normalized}`;
   };
 
   /* ===================== ✅ STATUS UPDATE (DB + UI) ===================== */
@@ -249,7 +250,7 @@ const AdminManageRequests = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/admin/outpasses/${outpassId}/status`,
+        `${API_BASE_URL}/api/admin/outpasses/${outpassId}/status`,
         {
           method: "PATCH",
           headers: {
