@@ -14,16 +14,33 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ✅ Single CORS config (no duplicates)
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://online-outpass-system.onrender.com",
+  "https://online-outpass-system-1.onrender.com",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://online-outpass-system.onrender.com", // your frontend
-      process.env.FRONTEND_URL, // optional (set in Render backend env)
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+      // allow Postman/server-to-server (no origin)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS not allowed for: " + origin));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// ✅ IMPORTANT for preflight
+app.options("*", cors());
+
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
