@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
+      
       "https://online-outpass-system-1.onrender.com", // your frontend
       process.env.FRONTEND_URL, // optional (set in Render backend env)
     ].filter(Boolean),
