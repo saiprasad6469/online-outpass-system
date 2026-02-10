@@ -2,6 +2,10 @@
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 async function request(path, { method = "GET", body, headers = {}, credentials = "omit" } = {}) {
+  if (!BASE_URL) {
+    throw new Error("REACT_APP_API_BASE_URL is missing in frontend environment variables.");
+  }
+
   const url = `${BASE_URL}${path}`;
 
   const res = await fetch(url, {
@@ -11,33 +15,28 @@ async function request(path, { method = "GET", body, headers = {}, credentials =
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
-    credentials, // use "include" only if using cookies
+    credentials,
   });
 
+  const raw = await res.text();
   const contentType = res.headers.get("content-type") || "";
-  const raw = await res.text(); // ✅ prevents json() crash
 
-  let data = null;
-  if (raw) {
-    try {
-      data = contentType.includes("application/json") ? JSON.parse(raw) : raw;
-    } catch {
-      data = raw;
-    }
+  let data = {};
+  try {
+    data = raw && contentType.includes("application/json") ? JSON.parse(raw) : { message: raw };
+  } catch {
+    data = { message: raw || "Invalid response from server" };
   }
 
   if (!res.ok) {
-    const msg =
-      (data && data.message) ||
-      (typeof data === "string" && data) ||
-      `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw new Error(data.message || `Request failed (${res.status})`);
   }
 
   return data;
 }
 
 export const api = {
-  studentLogin: (payload) => request("/api/auth/student/login", { method: "POST", body: payload }),
-  studentSignup: (payload) => request("/api/auth/student/signup", { method: "POST", body: payload }),
+  // ✅ Match backend routes
+  studentLogin: (payload) => request("/api/auth/login", { method: "POST", body: payload }),
+  studentSignup: (payload) => request("/api/auth/register", { method: "POST", body: payload }),
 };

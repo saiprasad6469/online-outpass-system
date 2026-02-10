@@ -13,17 +13,29 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Single CORS config (no duplicates)
+// ✅ Allow BOTH your Render frontends + localhost
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://online-outpass-system.onrender.com",   // (not needed, but safe)
+  "https://online-outpass-system-1.onrender.com", // ✅ YOUR FRONTEND
+].filter(Boolean);
+
+// ✅ Single CORS (remove duplicates)
 app.use(
   cors({
-    origin: [
-      
-      "https://online-outpass-system-1.onrender.com", // your frontend
-      process.env.FRONTEND_URL, // optional (set in Render backend env)
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // Postman / server-to-server
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("CORS blocked for: " + origin));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// ✅ Handle preflight OPTIONS requests
+app.options("*", cors());
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
@@ -33,7 +45,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/outpass", require("./routes/outpassRoutes"));
 
-// ✅ Use /api/admin only ONCE (merge routes inside this router)
+// ✅ IMPORTANT: Mount /api/admin ONLY ONCE
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 app.use("/api/support", require("./routes/supportRoutes"));
