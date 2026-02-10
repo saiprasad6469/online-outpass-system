@@ -35,7 +35,12 @@ app.use(
 );
 
 // ✅ Handle preflight OPTIONS requests
-app.options("*", cors());
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
