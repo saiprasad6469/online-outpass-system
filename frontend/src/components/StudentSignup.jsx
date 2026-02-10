@@ -96,136 +96,124 @@ const StudentSignup = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // ✅ If env missing, fail clearly
-    if (!API_BASE_URL) {
-      setMessage({
-        text: 'API base URL missing. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy frontend.',
-        type: 'error'
-      });
-      return;
-    }
+  if (!API_BASE_URL) {
+    setMessage({
+      text: 'API base URL missing. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy frontend.',
+      type: 'error'
+    });
+    return;
+  }
 
-    const requiredFields = [
-      'firstName', 'lastName', 'studentId',
-      'password', 'confirmPassword',
-      'department', 'yearSemester', 'section'
-    ];
+  const requiredFields = [
+    'firstName', 'lastName', 'studentId',
+    'password', 'confirmPassword',
+    'department', 'yearSemester', 'section'
+  ];
 
-    const missingFields = requiredFields.filter(field => !formData[field]);
+  const missingFields = requiredFields.filter(field => !formData[field]);
+  if (missingFields.length > 0) {
+    setMessage({ text: `Please fill all required fields: ${missingFields.join(', ')}`, type: 'error' });
+    return;
+  }
 
-    if (missingFields.length > 0) {
-      setMessage({ text: `Please fill all required fields: ${missingFields.join(', ')}`, type: 'error' });
-      return;
-    }
+  if (!formData.agreeTerms) {
+    setMessage({ text: 'Please agree to the Terms of Service', type: 'error' });
+    return;
+  }
 
-    if (!formData.agreeTerms) {
-      setMessage({ text: 'Please agree to the Terms of Service', type: 'error' });
-      return;
-    }
+  if (formData.password !== formData.confirmPassword) {
+    setMessage({ text: 'Passwords do not match', type: 'error' });
+    return;
+  }
 
-    if (formData.password !== formData.confirmPassword) {
-      setMessage({ text: 'Passwords do not match', type: 'error' });
-      return;
-    }
+  setLoading(true);
+  setMessage(null);
 
-    if (formData.password.length < 6) {
-      setMessage({ text: 'Password must be at least 6 characters', type: 'error' });
-      return;
-    }
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        studentId: formData.studentId,
+        phone: formData.phone || '',
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        department: formData.department,
+        yearSemester: formData.yearSemester,
+        section: formData.section
+      })
+    });
 
-    if (formData.section && !/^[A-Za-z0-9]{1,2}$/.test(formData.section)) {
-      setMessage({ text: 'Section should be 1-2 characters (e.g., A, B, 1, 2)', type: 'error' });
-      return;
-    }
+    console.log('📥 Signup status:', response.status);
+    console.log('📥 Content-Type:', response.headers.get('content-type'));
 
-    if (formData.yearSemester && !/^[0-9]{1,2}-[1-2]$/.test(formData.yearSemester)) {
-      setMessage({ text: 'Year-Semester should be in format like "1-1", "2-2", "3-1" etc.', type: 'error' });
-      return;
-    }
+    const raw = await response.text();
+    console.log('📥 RAW RESPONSE:', raw);
 
-    setLoading(true);
-    setMessage(null);
-
+    let data = {};
     try {
-      // ✅ FIXED: use backticks
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          studentId: formData.studentId,
-          phone: formData.phone || '',
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          department: formData.department,
-          yearSemester: formData.yearSemester,
-          section: formData.section
-        })
-      });
-
-      const text = await response.text();
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { success: false, message: text?.slice(0, 200) || 'Server error' };
-      }
-
-      if (!response.ok || !data.success) {
-        setMessage({ text: data.message || 'Registration failed. Please try again.', type: 'error' });
-        return;
-      }
-
-      setMessage({
-        text: `Account created successfully! Welcome ${formData.firstName} ${formData.lastName}!`,
-        type: 'success'
-      });
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        sessionStorage.setItem('token', data.token);
-      }
-
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      setFormData({
-        firstName: '',
-        lastName: '',
-        studentId: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-        department: '',
-        yearSemester: '',
-        section: '',
-        agreeTerms: false
-      });
-      setPasswordStrength('');
-      setPasswordMatch('');
-
-      setTimeout(() => {
-        navigate('/student-dashboard');
-      }, 2000);
-
-    } catch (error) {
-      console.error('❌ Network error:', error);
-      setMessage({
-        text: 'Cannot connect to server. Please check backend URL and CORS settings, then redeploy.',
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      data = { success: false, message: raw?.slice(0, 200) || 'Server returned non-JSON response' };
     }
-  };
+
+    if (!response.ok || !data.success) {
+      setMessage({ text: data.message || 'Registration failed. Please try again.', type: 'error' });
+      return;
+    }
+
+    setMessage({
+      text: `Account created successfully! Welcome ${formData.firstName} ${formData.lastName}!`,
+      type: 'success'
+    });
+
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      sessionStorage.setItem('token', data.token);
+    }
+
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify(data.user));
+      sessionStorage.setItem('user', JSON.stringify(data.user));
+    }
+
+    setFormData({
+      firstName: '',
+      lastName: '',
+      studentId: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      department: '',
+      yearSemester: '',
+      section: '',
+      agreeTerms: false
+    });
+    setPasswordStrength('');
+    setPasswordMatch('');
+
+    setTimeout(() => {
+      navigate('/student-dashboard');
+    }, 1500);
+
+  } catch (error) {
+    console.error('❌ Signup error:', error);
+    setMessage({
+      text: 'Cannot connect to server. Please check backend URL + CORS and redeploy.',
+      type: 'error'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="auth-container">
