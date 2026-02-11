@@ -4,8 +4,7 @@ const router = express.Router();
 
 const Outpass = require("../models/OutPass");
 const Student = require("../models/Student"); // only for name/roll mapping (optional)
-const { adminAuthMiddleware } = require("../middleware/adminAuthMiddleware");
-
+const adminAuth = require("../middleware/adminAuthMiddleware");
 
 /* =========================
    Helpers
