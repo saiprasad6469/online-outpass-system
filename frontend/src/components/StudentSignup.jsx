@@ -1,63 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../styles/Auth.css';
-import MessageAlert from './MessageAlert';
-import LoadingSpinner from './LoadingSpinner';
+// src/components/StudentSignup.jsx
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import "../styles/Auth.css";
+import MessageAlert from "./MessageAlert";
+import LoadingSpinner from "./LoadingSpinner";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const StudentSignup = () => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    studentId: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    department: '',
-    yearSemester: '',
-    section: '',
-    agreeTerms: false
+    firstName: "",
+    lastName: "",
+    studentId: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    department: "",
+    yearSemester: "",
+    section: "",
+    agreeTerms: false,
   });
 
-  const [passwordStrength, setPasswordStrength] = useState('');
-  const [passwordMatch, setPasswordMatch] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState("");
+  const [passwordMatch, setPasswordMatch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
+  // ✅ same format as admin
+  const DEPARTMENTS = ["CSE", "CSD", "CSM", "IOT", "CSC", "EEE", "MECH", "ECE", "CIVIL"];
+  const SECTIONS = ["A", "B", "C", "D", "E", "F"];
+
   useEffect(() => {
-    checkPasswordMatch();
+    checkPasswordMatch(formData.password, formData.confirmPassword);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.password, formData.confirmPassword]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    const updatedFormData = {
+    const nextFormData = {
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     };
 
-    setFormData(updatedFormData);
+    setFormData(nextFormData);
 
-    if (name === 'password') {
+    if (name === "password") {
       checkPasswordStrength(value);
+    }
+
+    if (name === "password" || name === "confirmPassword") {
+      const nextPassword = name === "password" ? value : nextFormData.password;
+      const nextConfirm = name === "confirmPassword" ? value : nextFormData.confirmPassword;
+      checkPasswordMatch(nextPassword, nextConfirm);
     }
   };
 
   const checkPasswordStrength = (password) => {
-    let strength = '';
-    let strengthClass = '';
+    let strength = "";
+    let strengthClass = "";
 
     if (password.length === 0) {
-      strength = '';
+      strength = "";
     } else if (password.length < 6) {
-      strength = 'Weak - Use at least 6 characters';
-      strengthClass = 'weak';
+      strength = "Weak - Use at least 6 characters";
+      strengthClass = "weak";
     } else if (password.length < 10) {
-      strength = 'Medium - Good start';
-      strengthClass = 'medium';
+      strength = "Medium - Good start";
+      strengthClass = "medium";
     } else {
       const hasUpperCase = /[A-Z]/.test(password);
       const hasLowerCase = /[a-z]/.test(password);
@@ -71,149 +83,153 @@ const StudentSignup = () => {
       if (hasSpecialChar) complexity++;
 
       if (complexity >= 3) {
-        strength = 'Strong - Excellent password!';
-        strengthClass = 'strong';
+        strength = "Strong - Excellent password!";
+        strengthClass = "strong";
       } else {
-        strength = 'Medium - Add numbers or special characters';
-        strengthClass = 'medium';
+        strength = "Medium - Add numbers or special characters";
+        strengthClass = "medium";
       }
     }
 
     setPasswordStrength({ text: strength, class: strengthClass });
   };
 
-  const checkPasswordMatch = () => {
-    const password = formData.password;
-    const confirmPassword = formData.confirmPassword;
-
-    if (confirmPassword.length === 0) {
-      setPasswordMatch({ text: '', class: '' });
+  const checkPasswordMatch = (password, confirmPassword) => {
+    if (!confirmPassword || confirmPassword.length === 0) {
+      setPasswordMatch({ text: "", class: "" });
     } else if (password === confirmPassword) {
-      setPasswordMatch({ text: '✓ Passwords match', class: 'strong' });
+      setPasswordMatch({ text: "✓ Passwords match", class: "strong" });
     } else {
-      setPasswordMatch({ text: '✗ Passwords do not match', class: 'weak' });
+      setPasswordMatch({ text: "✗ Passwords do not match", class: "weak" });
     }
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!API_BASE_URL) {
-    setMessage({
-      text: 'API base URL missing. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy frontend.',
-      type: 'error'
-    });
-    return;
-  }
-
-  const requiredFields = [
-    'firstName', 'lastName', 'studentId',
-    'password', 'confirmPassword',
-    'department', 'yearSemester', 'section'
-  ];
-
-  const missingFields = requiredFields.filter(field => !formData[field]);
-  if (missingFields.length > 0) {
-    setMessage({ text: `Please fill all required fields: ${missingFields.join(', ')}`, type: 'error' });
-    return;
-  }
-
-  if (!formData.agreeTerms) {
-    setMessage({ text: 'Please agree to the Terms of Service', type: 'error' });
-    return;
-  }
-
-  if (formData.password !== formData.confirmPassword) {
-    setMessage({ text: 'Passwords do not match', type: 'error' });
-    return;
-  }
-
-  setLoading(true);
-  setMessage(null);
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        studentId: formData.studentId,
-        phone: formData.phone || '',
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        department: formData.department,
-        yearSemester: formData.yearSemester,
-        section: formData.section
-      })
-    });
-
-    console.log('📥 Signup status:', response.status);
-    console.log('📥 Content-Type:', response.headers.get('content-type'));
-
-    const raw = await response.text();
-    console.log('📥 RAW RESPONSE:', raw);
-
-    let data = {};
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      data = { success: false, message: raw?.slice(0, 200) || 'Server returned non-JSON response' };
-    }
-
-    if (!response.ok || !data.success) {
-      setMessage({ text: data.message || 'Registration failed. Please try again.', type: 'error' });
+    if (!API_BASE_URL) {
+      setMessage({
+        text: "API base URL missing. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy frontend.",
+        type: "error",
+      });
       return;
     }
 
-    setMessage({
-      text: `Account created successfully! Welcome ${formData.firstName} ${formData.lastName}!`,
-      type: 'success'
-    });
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "studentId",
+      "password",
+      "confirmPassword",
+      "department",
+      "yearSemester",
+      "section",
+    ];
 
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-      sessionStorage.setItem('token', data.token);
+    const missingFields = requiredFields.filter((field) => !formData[field]);
+    if (missingFields.length > 0) {
+      setMessage({
+        text: `Please fill all required fields: ${missingFields.join(", ")}`,
+        type: "error",
+      });
+      return;
     }
 
-    if (data.user) {
-      localStorage.setItem('user', JSON.stringify(data.user));
-      sessionStorage.setItem('user', JSON.stringify(data.user));
+    if (!formData.agreeTerms) {
+      setMessage({ text: "Please agree to the Terms of Service", type: "error" });
+      return;
     }
 
-    setFormData({
-      firstName: '',
-      lastName: '',
-      studentId: '',
-      phone: '',
-      password: '',
-      confirmPassword: '',
-      department: '',
-      yearSemester: '',
-      section: '',
-      agreeTerms: false
-    });
-    setPasswordStrength('');
-    setPasswordMatch('');
+    if (formData.password !== formData.confirmPassword) {
+      setMessage({ text: "Passwords do not match", type: "error" });
+      return;
+    }
 
-    setTimeout(() => {
-      navigate('/student-dashboard');
-    }, 1500);
+    setLoading(true);
+    setMessage(null);
 
-  } catch (error) {
-    console.error('❌ Signup error:', error);
-    setMessage({
-      text: 'Cannot connect to server. Please check backend URL + CORS and redeploy.',
-      type: 'error'
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          studentId: formData.studentId,
+          phone: formData.phone || "",
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          department: formData.department,
+          yearSemester: formData.yearSemester,
+          section: formData.section,
+        }),
+      });
 
+      const raw = await response.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {
+          success: false,
+          message: raw?.slice(0, 200) || "Server returned non-JSON response",
+        };
+      }
+
+      if (!response.ok || !data.success) {
+        setMessage({
+          text: data.message || "Registration failed. Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      setMessage({
+        text: `Account created successfully! Welcome ${formData.firstName} ${formData.lastName}!`,
+        type: "success",
+      });
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        sessionStorage.setItem("token", data.token);
+      }
+
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      setFormData({
+        firstName: "",
+        lastName: "",
+        studentId: "",
+        phone: "",
+        password: "",
+        confirmPassword: "",
+        department: "",
+        yearSemester: "",
+        section: "",
+        agreeTerms: false,
+      });
+      setPasswordStrength("");
+      setPasswordMatch("");
+
+      setTimeout(() => {
+        navigate("/student-dashboard", { replace: true });
+      }, 1500);
+    } catch (error) {
+      console.error("❌ Signup error:", error);
+      setMessage({
+        text: "Cannot connect to server. Please check backend URL + CORS and redeploy.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="auth-container">
@@ -309,9 +325,17 @@ const StudentSignup = () => {
                   onChange={handleChange}
                   minLength="6"
                 />
-                {passwordStrength.text && (
+                {passwordStrength?.text && (
                   <div className={`password-strength ${passwordStrength.class}`}>
-                    <i className={`fas fa-${passwordStrength.class === 'weak' ? 'exclamation-triangle' : passwordStrength.class === 'medium' ? 'check-circle' : 'shield-alt'}`}></i>
+                    <i
+                      className={`fas fa-${
+                        passwordStrength.class === "weak"
+                          ? "exclamation-triangle"
+                          : passwordStrength.class === "medium"
+                          ? "check-circle"
+                          : "shield-alt"
+                      }`}
+                    ></i>
                     {passwordStrength.text}
                   </div>
                 )}
@@ -332,30 +356,40 @@ const StudentSignup = () => {
                   onChange={handleChange}
                   minLength="6"
                 />
-                {passwordMatch.text && (
+                {passwordMatch?.text && (
                   <div className={`password-match ${passwordMatch.class}`}>
-                    <i className={`fas fa-${passwordMatch.class === 'weak' ? 'times-circle' : 'check-circle'}`}></i>
+                    <i
+                      className={`fas fa-${
+                        passwordMatch.class === "weak" ? "times-circle" : "check-circle"
+                      }`}
+                    ></i>
                     {passwordMatch.text}
                   </div>
                 )}
               </div>
             </div>
 
+            {/* ✅ Department + YearSemester (UPDATED department to SELECT like admin) */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="department" className="blue-label">
                   <i className="fas fa-building blue-icon"></i> Department *
                 </label>
-                <input
-                  type="text"
+                <select
                   id="department"
                   name="department"
                   className="form-control"
-                  placeholder="Enter department name"
                   required
                   value={formData.department}
                   onChange={handleChange}
-                />
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
@@ -378,24 +412,27 @@ const StudentSignup = () => {
               </div>
             </div>
 
+            {/* ✅ Section SELECT (UPDATED like admin A-F) */}
             <div className="form-group">
               <label htmlFor="section" className="blue-label">
                 <i className="fas fa-users blue-icon"></i> Section *
               </label>
-              <input
-                type="text"
+              <select
                 id="section"
                 name="section"
                 className="form-control"
-                placeholder="Enter section (e.g., A, B, 1, 2)"
                 required
-                maxLength="2"
                 value={formData.section}
                 onChange={handleChange}
-                pattern="[A-Za-z0-9]{1,2}"
-                title="Section should be 1-2 characters (e.g., A, B, 1, 2)"
-              />
-              <div className="form-help-text">Enter 1-2 characters for section (e.g., A, B, 1, 2)</div>
+              >
+                <option value="">Select Section</option>
+                {SECTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    Section {s}
+                  </option>
+                ))}
+              </select>
+              <div className="form-help-text">Choose your section (A-F)</div>
             </div>
 
             <div className="terms">
@@ -408,9 +445,15 @@ const StudentSignup = () => {
                 onChange={handleChange}
               />
               <label htmlFor="agreeTerms" className="blue-label">
-                <i className="fas fa-file-contract blue-icon"></i> I agree to the{' '}
-                <a href="#" className="blue-link">Terms of Service</a> and{' '}
-                <a href="#" className="blue-link">Privacy Policy</a> of the Online Student Out-Pass System.
+                <i className="fas fa-file-contract blue-icon"></i> I agree to the{" "}
+                <span className="blue-link" style={{ textDecoration: "underline" }}>
+                  Terms of Service
+                </span>{" "}
+                and{" "}
+                <span className="blue-link" style={{ textDecoration: "underline" }}>
+                  Privacy Policy
+                </span>{" "}
+                of the Online Student Out-Pass System.
               </label>
             </div>
 
@@ -429,8 +472,10 @@ const StudentSignup = () => {
 
           <div className="login-link-container">
             <p>
-              <i className="fas fa-sign-in-alt blue-icon"></i> Already have an account?{' '}
-              <Link to="/student-login" className="login-link blue-link">Login here</Link>
+              <i className="fas fa-sign-in-alt blue-icon"></i> Already have an account?{" "}
+              <Link to="/student-login" className="login-link blue-link">
+                Login here
+              </Link>
             </p>
           </div>
 
@@ -443,11 +488,7 @@ const StudentSignup = () => {
       </div>
 
       {message && (
-        <MessageAlert
-          message={message.text}
-          type={message.type}
-          onClose={() => setMessage(null)}
-        />
+        <MessageAlert message={message.text} type={message.type} onClose={() => setMessage(null)} />
       )}
 
       {loading && <LoadingSpinner />}
