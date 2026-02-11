@@ -7,6 +7,9 @@ import LoadingSpinner from "./LoadingSpinner";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
+const DEPARTMENTS = ["CSE", "CSD", "CSM", "IOT", "CSC", "EEE", "MECH", "ECE", "CIVIL"];
+const SECTIONS = ["A", "B", "C", "D", "E", "F"];
+
 const StudentSignup = () => {
   const navigate = useNavigate();
 
@@ -28,33 +31,23 @@ const StudentSignup = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // ✅ same format as admin
-  const DEPARTMENTS = ["CSE", "CSD", "CSM", "IOT", "CSC", "EEE", "MECH", "ECE", "CIVIL"];
-  const SECTIONS = ["A", "B", "C", "D", "E", "F"];
-
   useEffect(() => {
-    checkPasswordMatch(formData.password, formData.confirmPassword);
+    checkPasswordMatch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.password, formData.confirmPassword]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    const nextFormData = {
+    const updatedFormData = {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     };
 
-    setFormData(nextFormData);
+    setFormData(updatedFormData);
 
     if (name === "password") {
       checkPasswordStrength(value);
-    }
-
-    if (name === "password" || name === "confirmPassword") {
-      const nextPassword = name === "password" ? value : nextFormData.password;
-      const nextConfirm = name === "confirmPassword" ? value : nextFormData.confirmPassword;
-      checkPasswordMatch(nextPassword, nextConfirm);
     }
   };
 
@@ -94,8 +87,11 @@ const StudentSignup = () => {
     setPasswordStrength({ text: strength, class: strengthClass });
   };
 
-  const checkPasswordMatch = (password, confirmPassword) => {
-    if (!confirmPassword || confirmPassword.length === 0) {
+  const checkPasswordMatch = () => {
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
+
+    if (confirmPassword.length === 0) {
       setPasswordMatch({ text: "", class: "" });
     } else if (password === confirmPassword) {
       setPasswordMatch({ text: "✓ Passwords match", class: "strong" });
@@ -168,7 +164,12 @@ const StudentSignup = () => {
         }),
       });
 
+      console.log("📥 Signup status:", response.status);
+      console.log("📥 Content-Type:", response.headers.get("content-type"));
+
       const raw = await response.text();
+      console.log("📥 RAW RESPONSE:", raw);
+
       let data = {};
       try {
         data = raw ? JSON.parse(raw) : {};
@@ -218,7 +219,7 @@ const StudentSignup = () => {
       setPasswordMatch("");
 
       setTimeout(() => {
-        navigate("/student-dashboard", { replace: true });
+        navigate("/student-dashboard");
       }, 1500);
     } catch (error) {
       console.error("❌ Signup error:", error);
@@ -325,7 +326,7 @@ const StudentSignup = () => {
                   onChange={handleChange}
                   minLength="6"
                 />
-                {passwordStrength?.text && (
+                {passwordStrength.text && (
                   <div className={`password-strength ${passwordStrength.class}`}>
                     <i
                       className={`fas fa-${
@@ -356,7 +357,7 @@ const StudentSignup = () => {
                   onChange={handleChange}
                   minLength="6"
                 />
-                {passwordMatch?.text && (
+                {passwordMatch.text && (
                   <div className={`password-match ${passwordMatch.class}`}>
                     <i
                       className={`fas fa-${
@@ -369,7 +370,7 @@ const StudentSignup = () => {
               </div>
             </div>
 
-            {/* ✅ Department + YearSemester (UPDATED department to SELECT like admin) */}
+            {/* ✅ UPDATED: Department as SELECT */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="department" className="blue-label">
@@ -384,9 +385,9 @@ const StudentSignup = () => {
                   onChange={handleChange}
                 >
                   <option value="">Select Department</option>
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
                     </option>
                   ))}
                 </select>
@@ -412,7 +413,7 @@ const StudentSignup = () => {
               </div>
             </div>
 
-            {/* ✅ Section SELECT (UPDATED like admin A-F) */}
+            {/* ✅ UPDATED: Section as SELECT (A-F) */}
             <div className="form-group">
               <label htmlFor="section" className="blue-label">
                 <i className="fas fa-users blue-icon"></i> Section *
@@ -426,9 +427,9 @@ const StudentSignup = () => {
                 onChange={handleChange}
               >
                 <option value="">Select Section</option>
-                {SECTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    Section {s}
+                {SECTIONS.map((sec) => (
+                  <option key={sec} value={sec}>
+                    Section {sec}
                   </option>
                 ))}
               </select>
