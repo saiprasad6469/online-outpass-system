@@ -110,157 +110,112 @@ const AdminSignup = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        // Validation
-        if (!formData.adminName || !formData.adminId || !formData.email || 
-            !formData.phone || !formData.password || !formData.confirmPassword || 
-            !formData.department || !formData.year || !formData.section) {
-            setMessage({ text: 'Please fill in all required fields', type: 'error' });
-            return;
-        }
-        
-        if (formData.adminName.length < 3) {
-            setMessage({ text: 'Full name must be at least 3 characters long', type: 'error' });
-            return;
-        }
-        
-        if (formData.adminId.length < 4) {
-            setMessage({ text: 'Admin ID must be at least 4 characters long', type: 'error' });
-            return;
-        }
-        
-        if (formData.password !== formData.confirmPassword) {
-            setMessage({ text: 'Passwords do not match', type: 'error' });
-            return;
-        }
-        
-        if (formData.password.length < 8) {
-            setMessage({ text: 'Admin password must be at least 8 characters long', type: 'error' });
-            return;
-        }
-        
-        const hasUpperCase = /[A-Z]/.test(formData.password);
-        const hasLowerCase = /[a-z]/.test(formData.password);
-        const hasNumbers = /\d/.test(formData.password);
-        const hasSpecialChar = /[!@#$%^&*(),?":{}|<>]/.test(formData.password);
-        
-        if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-            setMessage({ 
-                text: 'Admin password must contain uppercase, lowercase, numbers, and special characters', 
-                type: 'error' 
-            });
-            return;
-        }
-        
-        if (!formData.agreeTerms) {
-            setMessage({ 
-                text: 'You must agree to the Administrative Terms of Service and Security Policy.', 
-                type: 'error' 
-            });
-            return;
-        }
-        
-        if (!validateEmail(formData.email)) {
-            setMessage({ 
-                text: 'Please enter a valid HITAM official email address ending with @hitam.org', 
-                type: 'error' 
-            });
-            return;
-        }
-        
-        if (!validatePhone(formData.phone)) {
-            setMessage({ text: 'Please enter a valid contact number (10 digits)', type: 'error' });
-            return;
-        }
+  e.preventDefault();
 
-        setLoading(true);
-        
-        try {
-            const response = await fetch('${API_BASE_URL}/api/admin/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    adminName: formData.adminName,
-                    adminId: formData.adminId,
-                    email: formData.email,
-                    phone: formData.phone,
-                    password: formData.password,
-                    department: formData.department,
-                    year: formData.year,
-                    section: formData.section
-                })
-            });
+  if (!API_BASE_URL) {
+    setMessage({
+      text: "API base URL missing. Set REACT_APP_API_BASE_URL in Render frontend env and redeploy.",
+      type: "error",
+    });
+    return;
+  }
 
-            const data = await response.json();
-            
-            if (data.success) {
-                setMessage({ 
-                    text: `Admin account created successfully! Welcome ${formData.adminName}!`, 
-                    type: 'success' 
-                });
-                
-                // Store admin token and user data
-                localStorage.setItem('adminToken', data.token);
-                localStorage.setItem('adminUser', JSON.stringify(data.user));
-                
-                // Clear form
-                setFormData({
-                    adminName: '',
-                    adminId: '',
-                    email: '',
-                    phone: '',
-                    password: '',
-                    confirmPassword: '',
-                    department: '',
-                    year: '',
-                    section: '',
-                    agreeTerms: false
-                });
-                setPasswordStrength('');
-                setPasswordMatch('');
-                
-                // Redirect to admin dashboard
-                setTimeout(() => {
-                    navigate('/admin-dashboard');
-                }, 2000);
-            } else {
-                let errorMessage = data.message || 'Admin registration failed. Please try again.';
-                
-                if (data.message && data.message.includes('already exists')) {
-                    if (data.message.includes('email')) {
-                        errorMessage = 'An admin account with this HITAM email already exists.';
-                    } else if (data.message.includes('adminId')) {
-                        errorMessage = 'An admin account with this Admin ID already exists.';
-                    }
-                } else if (data.message && data.message.includes('validation')) {
-                    errorMessage = 'Please check your information and try again.';
-                } else if (data.message && data.message.includes('authorization')) {
-                    errorMessage = 'Admin account creation requires special authorization. Please contact system administrator.';
-                }
-                
-                setMessage({ text: errorMessage, type: 'error' });
-            }
-        } catch (error) {
-            console.error('Admin registration error:', error);
-            
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                setMessage({ 
-                    text: 'Cannot connect to the server. Please check if backend is running.', 
-                    type: 'error' 
-                });
-            } else {
-                setMessage({ 
-                    text: 'Network error. Please check your internet connection and try again.', 
-                    type: 'error' 
-                });
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Validation (keep yours)
+  if (
+    !formData.adminName || !formData.adminId || !formData.email ||
+    !formData.phone || !formData.password || !formData.confirmPassword ||
+    !formData.department || !formData.year || !formData.section
+  ) {
+    setMessage({ text: "Please fill in all required fields", type: "error" });
+    return;
+  }
+
+  if (formData.password !== formData.confirmPassword) {
+    setMessage({ text: "Passwords do not match", type: "error" });
+    return;
+  }
+
+  setLoading(true);
+  setMessage(null);
+
+  try {
+    console.log("🚀 Sending admin register request...");
+
+    // ✅ FIXED: backticks + Accept header
+    const response = await fetch(`${API_BASE_URL}/api/admin/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        adminName: formData.adminName,
+        adminId: formData.adminId,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        department: formData.department,
+        year: formData.year,
+        section: formData.section,
+      }),
+    });
+
+    console.log("📥 Admin signup status:", response.status);
+    console.log("📥 Content-Type:", response.headers.get("content-type"));
+
+    // ✅ FIXED: safe parse (prevents Unexpected end of JSON)
+    const raw = await response.text();
+    console.log("📥 RAW RESPONSE:", raw);
+
+    let data = {};
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      data = { success: false, message: raw || "Server returned non-JSON response" };
+    }
+
+    if (!response.ok || !data.success) {
+      setMessage({
+        text: data.message || `Admin registration failed (${response.status})`,
+        type: "error",
+      });
+      return;
+    }
+
+    setMessage({
+      text: `Admin account created successfully! Welcome ${formData.adminName}!`,
+      type: "success",
+    });
+
+    if (data.token) localStorage.setItem("adminToken", data.token);
+    if (data.user) localStorage.setItem("adminUser", JSON.stringify(data.user));
+
+    setFormData({
+      adminName: "",
+      adminId: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      department: "",
+      year: "",
+      section: "",
+      agreeTerms: false,
+    });
+    setPasswordStrength("");
+    setPasswordMatch("");
+
+    setTimeout(() => navigate("/admin-dashboard"), 1200);
+  } catch (error) {
+    console.error("Admin registration error:", error);
+    setMessage({
+      text: error.message || "Cannot connect to server. Check backend URL + CORS.",
+      type: "error",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
     return (
         <div className="auth-container">

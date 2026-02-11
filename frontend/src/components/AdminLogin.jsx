@@ -46,7 +46,7 @@ const AdminLogin = () => {
         setLoading(true);
         
         try {
-            const response = await fetch('{API_BASE_URL}/api/admin/login', {
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -57,7 +57,10 @@ const AdminLogin = () => {
                 })
             });
 
-            const data = await response.json();
+            const raw = await response.text();
+let data = raw ? JSON.parse(raw) : {};
+if (!response.ok || !data.success) throw new Error(data.message || "Login failed");
+localStorage.setItem("adminToken", data.token);
             
             if (data.success) {
                 setMessage({ text: 'Admin access granted! Redirecting to dashboard...', type: 'success' });
