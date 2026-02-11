@@ -13,18 +13,16 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Allow BOTH your Render frontends + localhost
+// ✅ Allow your Render frontend + localhost
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://online-outpass-system.onrender.com",   // (not needed, but safe)
-  "https://online-outpass-system-1.onrender.com", // ✅ YOUR FRONTEND
+  "https://online-outpass-system-1.onrender.com", // ✅ frontend
 ].filter(Boolean);
 
-// ✅ Single CORS (remove duplicates)
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman / server-to-server
+      if (!origin) return callback(null, true); // Postman/server-to-server
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("CORS blocked for: " + origin));
     },
@@ -34,11 +32,9 @@ app.use(
   })
 );
 
-// ✅ Handle preflight OPTIONS requests
+// ✅ Handle preflight OPTIONS (avoid path-to-regexp issue)
 app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 
@@ -50,8 +46,11 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/outpass", require("./routes/outpassRoutes"));
 
-// ✅ IMPORTANT: Mount /api/admin ONLY ONCE
+// ✅ Admin auth routes
 app.use("/api/admin", require("./routes/adminRoutes"));
+
+// ✅ Admin outpass routes (THIS FIXES YOUR 404)
+app.use("/api/admin", require("./routes/adminOutpassRoutes"));
 
 app.use("/api/support", require("./routes/supportRoutes"));
 app.use("/api/security", require("./routes/security.routes"));
