@@ -164,7 +164,7 @@ const FAQ = () => {
         }
         
         try {
-            const response = await fetch('${API_BASE_URL}/api/students/check-auth', {
+            const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -227,7 +227,7 @@ const FAQ = () => {
         if (!token) return;
         
         try {
-            const response = await fetch('${API_BASE_URL}/api/students/profile', {
+            const response = await fetch(`${API_BASE_URL}/api/students/profile`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -319,7 +319,7 @@ const FAQ = () => {
         }
         
         try {
-            const response = await fetch('${API_BASE_URL}/api/students/update-profile', {
+            const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ const FAQ = () => {
             
             try {
                 if (token) {
-                    await fetch('${API_BASE_URL}/api/students/logout', {
+                    await fetch(`${API_BASE_URL}/api/students/logout`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`
