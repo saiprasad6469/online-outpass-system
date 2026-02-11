@@ -154,7 +154,7 @@ const AdminReports = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("${API_BASE_URL}/api/admin/outpasses", {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
