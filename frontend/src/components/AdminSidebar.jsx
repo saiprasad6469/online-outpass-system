@@ -75,14 +75,13 @@ const AdminSidebar = ({ isMobileOpen, onClose }) => {
 
           {/* ✅ Logout (Styled same as Link) */}
           <li>
-            <button
-              type="button"
+            <a
               onClick={handleLogout}
               className="sidebar-link logout-link"
             >
               <i className="fas fa-sign-out-alt"></i>
               <span>Logout</span>
-            </button>
+            </a>
           </li>
         </ul>
       </div>
