@@ -82,8 +82,7 @@ const AdminSidebar = ({ isMobileOpen, onClose }) => {
               onClick={handleLogout}
               className="logout-link"
               style={{
-                background: "none",
-                border: "none",
+               
                 width: "100%",
                 textAlign: "left",
                 cursor: "pointer",
