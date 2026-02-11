@@ -77,21 +77,14 @@ const SecuritySidebar = ({ isMobileOpen, onClose }) => {
 
           {/* ✅ Logout */}
           <li>
-            <button
+            <a
               type="button"
               onClick={handleLogout}
               className="logout-link"
-              style={{
-                background: "none",
-                border: "none",
-                width: "100%",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
             >
               <i className="fas fa-sign-out-alt"></i>
               <span>Logout</span>
-            </button>
+            </a>
           </li>
         </ul>
       </div>
