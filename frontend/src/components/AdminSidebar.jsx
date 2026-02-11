@@ -15,7 +15,7 @@ const AdminSidebar = ({ isMobileOpen, onClose }) => {
     if (window.innerWidth <= 768 && onClose) onClose();
   };
 
-  // ✅ Proper logout (SPA navigation)
+  // ✅ Proper logout
   const handleLogout = () => {
     if (!window.confirm("Are you sure you want to logout?")) return;
 
@@ -25,10 +25,8 @@ const AdminSidebar = ({ isMobileOpen, onClose }) => {
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("adminUser");
 
-    handleLinkClick(); // close sidebar on mobile
+    handleLinkClick();
     navigate("/admin-login", { replace: true });
-
-    // Optional: window.location.reload();
   };
 
   return (
@@ -75,12 +73,12 @@ const AdminSidebar = ({ isMobileOpen, onClose }) => {
             </Link>
           </li>
 
-          {/* ✅ Logout */}
+          {/* ✅ Logout (Styled same as Link) */}
           <li>
             <button
               type="button"
               onClick={handleLogout}
-              className="logout-link"
+              className="sidebar-link logout-link"
             >
               <i className="fas fa-sign-out-alt"></i>
               <span>Logout</span>
