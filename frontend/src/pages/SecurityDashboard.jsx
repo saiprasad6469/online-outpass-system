@@ -32,8 +32,9 @@ const SecurityDashboard = () => {
 
   const [todaysOutpasses, setTodaysOutpasses] = useState([]);
 
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  // ✅ REMOVED dropdown + logout behavior
+  // const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [greeting, setGreeting] = useState("Welcome");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -116,15 +117,9 @@ const SecurityDashboard = () => {
   };
 
   /* ===================== CLICK OUTSIDE ===================== */
+  // ✅ Only keep sidebar close on outside click (no profile dropdown now)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
-        setShowProfileDropdown(false);
-      }
-
       if (
         window.innerWidth <= 768 &&
         sidebarOpen &&
@@ -140,53 +135,12 @@ const SecurityDashboard = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen]);
 
-  /* ===================== LOGOUT ===================== */
-  const handleLogout = () => {
-    if (!window.confirm("Are you sure you want to logout?")) return;
-    clearAndRedirect();
-  };
-
-  /* ===================== AVATAR ===================== */
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = ev.target.result;
-      setAvatarPreview(img);
-
-      const stored = JSON.parse(
-        localStorage.getItem("securityUser") ||
-          sessionStorage.getItem("securityUser") ||
-          "{}"
-      );
-      const updatedUser = { ...stored, avatar: img };
-
-      localStorage.setItem("securityUser", JSON.stringify(updatedUser));
-      sessionStorage.setItem("securityUser", JSON.stringify(updatedUser));
-    };
-    reader.readAsDataURL(file);
-  };
-
   /* ===================== HELPERS ===================== */
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A";
     const d = new Date(dateString);
     if (Number.isNaN(d.getTime())) return "N/A";
     return d.toLocaleString("en-IN");
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return "N/A";
-
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   };
 
   const getInitialsFromName = (name = "NA") => {
@@ -246,7 +200,10 @@ const SecurityDashboard = () => {
 
       // ✅ backend returns ONLY today approved (based on approvedAt)
       const outpasses = Array.isArray(data.outpasses) ? data.outpasses : [];
-      const fixed = outpasses.map((x) => ({ ...x, outStatus: x.outStatus || "Pending" }));
+      const fixed = outpasses.map((x) => ({
+        ...x,
+        outStatus: x.outStatus || "Pending",
+      }));
       setTodaysOutpasses(fixed);
 
       const stats = data.stats || {};
@@ -256,7 +213,9 @@ const SecurityDashboard = () => {
         monthRequests: stats.monthRequests ?? prev.monthRequests,
         todayReturn: stats.todayReturn ?? prev.todayReturn,
         verifiedToday: stats.verifiedToday ?? prev.verifiedToday,
-        checkedOutToday: stats.checkedOutToday ?? fixed.filter((x) => x.outStatus === "Approved").length,
+        checkedOutToday:
+          stats.checkedOutToday ??
+          fixed.filter((x) => x.outStatus === "Approved").length,
         systemStatus: stats.systemStatus ?? prev.systemStatus,
       }));
     } catch (err) {
@@ -300,9 +259,13 @@ const SecurityDashboard = () => {
 
       // ✅ update list + modal
       setTodaysOutpasses((prev) =>
-        prev.map((x) => (x._id === outpassId ? { ...x, outStatus: "Approved" } : x))
+        prev.map((x) =>
+          x._id === outpassId ? { ...x, outStatus: "Approved" } : x
+        )
       );
-      setSelectedOutpass((prev) => (prev ? { ...prev, outStatus: "Approved" } : prev));
+      setSelectedOutpass((prev) =>
+        prev ? { ...prev, outStatus: "Approved" } : prev
+      );
 
       // update stats quickly
       setDashboardStats((prev) => ({
@@ -326,11 +289,8 @@ const SecurityDashboard = () => {
           Online Student Out-Pass System
         </Link>
 
-        <div
-          className="user-profile"
-          ref={profileDropdownRef}
-          onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-        >
+        {/* ✅ Profile is now display-only (no click, no dropdown, no logout) */}
+        <div className="user-profile" ref={profileDropdownRef}>
           <div className="user-avatar">
             {avatarPreview ? (
               <img src={avatarPreview} alt={securityData.name} />
@@ -343,56 +303,6 @@ const SecurityDashboard = () => {
             <h3>{securityData.name}</h3>
             <p>Security ID: {securityData.id}</p>
           </div>
-
-          {showProfileDropdown && (
-            <div
-              className="profile-dropdown active"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="profile-header">
-                <div className="profile-avatar-large">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={securityData.name} />
-                  ) : (
-                    <span>{securityData.initials}</span>
-                  )}
-                </div>
-                <div className="profile-header-info">
-                  <h3>{securityData.name}</h3>
-                  <p>Security ID: {securityData.id}</p>
-                </div>
-              </div>
-
-              <div className="profile-menu">
-                <a
-                  href="#"
-                  className="profile-menu-item"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowProfileModal(true);
-                    setShowProfileDropdown(false);
-                  }}
-                >
-                  <i className="fas fa-user-edit"></i>
-                  <span>Edit Profile</span>
-                </a>
-
-                <div className="profile-divider"></div>
-
-                <a
-                  href="#"
-                  className="profile-menu-item"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleLogout();
-                  }}
-                >
-                  <i className="fas fa-sign-out-alt"></i>
-                  <span>Logout</span>
-                </a>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
@@ -458,15 +368,20 @@ const SecurityDashboard = () => {
                 <tbody>
                   {todaysOutpasses.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: "center", padding: "16px" }}>
+                      <td
+                        colSpan="5"
+                        style={{ textAlign: "center", padding: "16px" }}
+                      >
                         No approved outpasses for today
                       </td>
                     </tr>
                   ) : (
                     todaysOutpasses.map((x, idx) => {
                       const displayName = x.fullName || x.studentName || "N/A";
-                      const displayRoll = x.rollNumber || x.rollNo || x.studentId || "-";
-                      const displayApprovedAt = x.approvedAt || x.outDate || x.appliedAt || null;
+                      const displayRoll =
+                        x.rollNumber || x.rollNo || x.studentId || "-";
+                      const displayApprovedAt =
+                        x.approvedAt || x.outDate || x.appliedAt || null;
                       const displayPurpose = x.reasonType || x.purpose || "-";
 
                       const outStatusInfo = getOutStatusInfo(x);
@@ -475,7 +390,12 @@ const SecurityDashboard = () => {
                         <tr
                           key={x._id || `${displayRoll}-${displayApprovedAt}-${idx}`}
                           style={{ cursor: "pointer" }}
-                          onClick={() => setSelectedOutpass({ ...x, outStatus: x.outStatus || "Pending" })}
+                          onClick={() =>
+                            setSelectedOutpass({
+                              ...x,
+                              outStatus: x.outStatus || "Pending",
+                            })
+                          }
                         >
                           <td>
                             <div className="student-info">
@@ -505,7 +425,8 @@ const SecurityDashboard = () => {
 
             <div className="table-footer">
               <p className="table-info">
-                Showing <strong>{todaysOutpasses.length}</strong> today&apos;s approved outpasses
+                Showing <strong>{todaysOutpasses.length}</strong> today&apos;s
+                approved outpasses
               </p>
             </div>
           </section>
@@ -559,40 +480,77 @@ const SecurityDashboard = () => {
         <p>© 2024 Online Student Out-Pass System. All rights reserved.</p>
       </footer>
 
-      {/* ✅ Outpass Details Modal */}
+      {/* ✅ Outpass Details Modal (UNCHANGED) */}
       {selectedOutpass && (
-        <div className="profile-modal-overlay active" onClick={() => setSelectedOutpass(null)}>
+        <div
+          className="profile-modal-overlay active"
+          onClick={() => setSelectedOutpass(null)}
+        >
           <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Outpass Details</h2>
-              <button className="close-modal" onClick={() => setSelectedOutpass(null)}>
+              <button
+                className="close-modal"
+                onClick={() => setSelectedOutpass(null)}
+              >
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
             <div className="modal-content">
               <div style={{ display: "grid", gap: 10 }}>
-                <div><strong>Name:</strong> {selectedOutpass.fullName || "N/A"}</div>
-                <div><strong>Roll Number:</strong> {selectedOutpass.rollNumber || "N/A"}</div>
-                <div><strong>Department:</strong> {selectedOutpass.department || "N/A"}</div>
-                <div><strong>Year:</strong> {selectedOutpass.year || "N/A"}</div>
-                <div><strong>Section:</strong> {selectedOutpass.section || "N/A"}</div>
-                <div><strong>Reason Type:</strong> {selectedOutpass.reasonType || "N/A"}</div>
-                <div><strong>Reason:</strong> {selectedOutpass.reason || "N/A"}</div>
-                <div><strong>Contact:</strong> {selectedOutpass.contactNumber || "N/A"}</div>
+                <div>
+                  <strong>Name:</strong> {selectedOutpass.fullName || "N/A"}
+                </div>
+                <div>
+                  <strong>Roll Number:</strong>{" "}
+                  {selectedOutpass.rollNumber || "N/A"}
+                </div>
+                <div>
+                  <strong>Department:</strong>{" "}
+                  {selectedOutpass.department || "N/A"}
+                </div>
+                <div>
+                  <strong>Year:</strong> {selectedOutpass.year || "N/A"}
+                </div>
+                <div>
+                  <strong>Section:</strong> {selectedOutpass.section || "N/A"}
+                </div>
+                <div>
+                  <strong>Reason Type:</strong>{" "}
+                  {selectedOutpass.reasonType || "N/A"}
+                </div>
+                <div>
+                  <strong>Reason:</strong> {selectedOutpass.reason || "N/A"}
+                </div>
+                <div>
+                  <strong>Contact:</strong>{" "}
+                  {selectedOutpass.contactNumber || "N/A"}
+                </div>
 
                 <hr />
 
                 <div>
                   <strong>Request Status:</strong>{" "}
-                  <span className={`status ${getApprovalStatusInfo(selectedOutpass).className}`}>
+                  <span
+                    className={`status ${getApprovalStatusInfo(selectedOutpass).className}`}
+                  >
                     {getApprovalStatusInfo(selectedOutpass).displayText}
                   </span>
                 </div>
 
-                <div><strong>Applied At:</strong> {formatDateTime(selectedOutpass.appliedAt)}</div>
-                <div><strong>Approved At:</strong> {formatDateTime(selectedOutpass.approvedAt)}</div>
-                <div><strong>Approved By:</strong> {selectedOutpass.approvedBy || "N/A"}</div>
+                <div>
+                  <strong>Applied At:</strong>{" "}
+                  {formatDateTime(selectedOutpass.appliedAt)}
+                </div>
+                <div>
+                  <strong>Approved At:</strong>{" "}
+                  {formatDateTime(selectedOutpass.approvedAt)}
+                </div>
+                <div>
+                  <strong>Approved By:</strong>{" "}
+                  {selectedOutpass.approvedBy || "N/A"}
+                </div>
 
                 <hr />
 
@@ -615,74 +573,6 @@ const SecurityDashboard = () => {
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Profile Modal (unchanged) */}
-      {showProfileModal && (
-        <div className="profile-modal-overlay active">
-          <div className="profile-modal">
-            <div className="modal-header">
-              <h2>Edit Security Profile</h2>
-              <button className="close-modal" onClick={() => setShowProfileModal(false)}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="modal-content">
-              <div className="avatar-edit-section">
-                <div className="avatar-edit">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={securityData.name} />
-                  ) : (
-                    <span>{securityData.initials}</span>
-                  )}
-                </div>
-
-                <label htmlFor="avatarUpload" className="avatar-change-btn">
-                  <i className="fas fa-camera"></i> Change Photo
-                </label>
-
-                <input
-                  type="file"
-                  id="avatarUpload"
-                  className="avatar-upload"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                />
-              </div>
-
-              <form>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="secName">Full Name</label>
-                    <input type="text" id="secName" className="form-control" defaultValue={securityData.name} />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="secEmail">Email</label>
-                    <input type="email" id="secEmail" className="form-control" defaultValue={securityData.email} readOnly />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="secPhone">Phone</label>
-                    <input type="tel" id="secPhone" className="form-control" defaultValue={securityData.phone} />
-                  </div>
-                </div>
-
-                <div className="modal-actions">
-                  <button type="button" className="modal-btn modal-btn-primary" onClick={() => setShowProfileModal(false)}>
-                    Save Changes
-                  </button>
-                  <button type="button" className="modal-btn modal-btn-secondary" onClick={() => setShowProfileModal(false)}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>

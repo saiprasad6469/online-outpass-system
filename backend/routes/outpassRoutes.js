@@ -137,6 +137,7 @@ router.get("/history", authMiddleware, async (req, res) => {
 
         decisionBy,
         decisionAt,
+        adminNotes: op.adminNotes || "",
 
         documents: Array.isArray(op.documents) ? op.documents : [],
       };

@@ -3,32 +3,26 @@ const express = require("express");
 const router = express.Router();
 
 const Outpass = require("../models/OutPass");
-const Student = require("../models/Student"); // only for name/roll mapping (optional)
+const Student = require("../models/Student");
 const adminAuth = require("../middleware/adminAuthMiddleware");
 
 /* =========================
    Helpers
 ========================= */
 const normalizeStatus = (s) => String(s || "Pending").toLowerCase();
-
-const getAdminDisplayName = (admin) => {
-  return (
-    admin?.adminName || // ✅ your DB field
-    admin?.name ||
-    admin?.fullName ||
-    admin?.username ||
-    admin?.adminId ||
-    admin?.email ||
-    "Admin"
-  );
-};
-
 const clean = (v) => String(v ?? "").trim();
 
+const getAdminDisplayName = (admin) =>
+  admin?.adminName ||
+  admin?.name ||
+  admin?.fullName ||
+  admin?.username ||
+  admin?.adminId ||
+  admin?.email ||
+  "Admin";
+
 /* =========================
-   GET ALL OUTPASSES (ADMIN)
    GET /api/admin/outpasses
-   ✅ Filters by admin.department + admin.year + admin.section
 ========================= */
 router.get("/outpasses", adminAuth, async (req, res) => {
   try {
@@ -36,7 +30,6 @@ router.get("/outpasses", adminAuth, async (req, res) => {
     const year = clean(req.admin?.year);
     const section = clean(req.admin?.section);
 
-    // ✅ If any is missing, filtering can't work
     if (!department || !year || !section) {
       return res.status(400).json({
         success: false,
@@ -45,12 +38,10 @@ router.get("/outpasses", adminAuth, async (req, res) => {
       });
     }
 
-    // ✅ MAIN FILTER: compare admin dept/year/section with outpass dept/year/section
     const outpasses = await Outpass.find({ department, year, section })
       .sort({ appliedAt: -1 })
       .lean();
 
-    // ✅ OPTIONAL: Get student names/roll from Student collection (not filtering)
     const studentIds = outpasses.map((op) => op.studentId).filter(Boolean);
 
     const students = await Student.find(
@@ -81,17 +72,13 @@ router.get("/outpasses", adminAuth, async (req, res) => {
 
       return {
         _id: op._id,
-
         studentName: student
           ? `${student.firstName} ${student.lastName}`
           : op.fullName || "Unknown",
-
         rollNo: student?.studentId || op.rollNumber || "-",
-
-        // you were showing appliedAt as outDate in UI
         outDate: op.appliedAt,
-        status: op.status,
 
+        status: op.status,
         reasonType: op.reasonType || "-",
         purpose: op.reasonType || "-",
         reason: op.reason || "-",
@@ -99,52 +86,53 @@ router.get("/outpasses", adminAuth, async (req, res) => {
         decisionBy,
         decisionAt,
 
+        // ✅ rejection reason from DB
+        adminNotes: op.adminNotes || "",
+
         documents: Array.isArray(op.documents) ? op.documents : [],
       };
     });
 
     const stats = {
       totalRequests: formatted.length,
-      approved: formatted.filter((x) => normalizeStatus(x.status) === "approved").length,
-      pending: formatted.filter((x) => normalizeStatus(x.status) === "pending").length,
-      rejected: formatted.filter((x) => normalizeStatus(x.status) === "rejected").length,
+      approved: formatted.filter((x) => normalizeStatus(x.status) === "approved")
+        .length,
+      pending: formatted.filter((x) => normalizeStatus(x.status) === "pending")
+        .length,
+      rejected: formatted.filter((x) => normalizeStatus(x.status) === "rejected")
+        .length,
     };
 
     return res.json({ success: true, outpasses: formatted, stats });
   } catch (err) {
     console.error("Admin outpass fetch error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch admin outpasses",
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch admin outpasses" });
   }
 });
 
 /* =========================
-   UPDATE STATUS (APPROVE/REJECT/PENDING)
-   PATCH /api/admin/outpasses/:id/status
-   ✅ Only allow update if outpass dept/year/section matches admin dept/year/section
+   PATCH /api/admin/outpasses/:id/notes
+   ✅ Save adminNotes anytime
 ========================= */
-router.patch("/outpasses/:id/status", adminAuth, async (req, res) => {
+router.patch("/outpasses/:id/notes", adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-
-    const allowed = ["Pending", "Approved", "Rejected"];
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
-    }
+    const { adminNotes } = req.body;
 
     const outpass = await Outpass.findById(id);
     if (!outpass) {
-      return res.status(404).json({ success: false, message: "Outpass not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Outpass not found" });
     }
 
     const adminDept = clean(req.admin?.department);
     const adminYear = clean(req.admin?.year);
     const adminSection = clean(req.admin?.section);
 
-    // ✅ STRICT SECURITY CHECK using Outpass fields (NOT Student)
+    // ✅ security check
     if (
       clean(outpass.department) !== adminDept ||
       clean(outpass.year) !== adminYear ||
@@ -152,11 +140,76 @@ router.patch("/outpasses/:id/status", adminAuth, async (req, res) => {
     ) {
       return res.status(403).json({
         success: false,
-        message: "Not allowed to update this outpass (dept/year/section mismatch)",
+        message: "Not allowed (dept/year/section mismatch)",
+      });
+    }
+
+    outpass.adminNotes = clean(adminNotes);
+    await outpass.save();
+
+    return res.json({
+      success: true,
+      message: "Notes saved successfully",
+      outpass: { _id: outpass._id, adminNotes: outpass.adminNotes || "" },
+    });
+  } catch (err) {
+    console.error("PATCH notes error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =========================
+   PATCH /api/admin/outpasses/:id/status
+   ✅ Reject => adminNotes required and stored
+========================= */
+router.patch("/outpasses/:id/status", adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+
+    const allowed = ["Pending", "Approved", "Rejected"];
+    if (!allowed.includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
+    }
+
+    const outpass = await Outpass.findById(id);
+    if (!outpass) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Outpass not found" });
+    }
+
+    const adminDept = clean(req.admin?.department);
+    const adminYear = clean(req.admin?.year);
+    const adminSection = clean(req.admin?.section);
+
+    // ✅ security check
+    if (
+      clean(outpass.department) !== adminDept ||
+      clean(outpass.year) !== adminYear ||
+      clean(outpass.section) !== adminSection
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed (dept/year/section mismatch)",
       });
     }
 
     const adminName = getAdminDisplayName(req.admin);
+
+    // ✅ Reject must have reason
+    if (status === "Rejected") {
+      const reason = clean(adminNotes);
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          message: "Rejection reason (adminNotes) is required when rejecting.",
+        });
+      }
+      outpass.adminNotes = reason;
+    }
 
     outpass.status = status;
 
@@ -194,6 +247,7 @@ router.patch("/outpasses/:id/status", adminAuth, async (req, res) => {
         rejectedAt: outpass.rejectedAt || null,
         decisionBy: outpass.decisionBy || null,
         decisionAt: outpass.decisionAt || null,
+        adminNotes: outpass.adminNotes || "",
       },
     });
   } catch (err) {

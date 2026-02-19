@@ -20,11 +20,13 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/outpass", require("./routes/outpassRoutes"));
-app.use("/api/admin", require("./routes/adminOutpassRoutes"));
+// ✅ use variables instead of double mounting
+const adminOutpassRoutes = require("./routes/adminOutpassRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
-// ...
+app.use("/api/admin", adminOutpassRoutes);
 app.use("/api/admin", adminRoutes);
+
 const supportRoutes = require("./routes/supportRoutes");
 app.use("/api/support", supportRoutes);
 const securityRoutes = require("./routes/security.routes");

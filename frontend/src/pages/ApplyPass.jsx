@@ -10,22 +10,17 @@ import "../styles/ApplyPass.css";
 const ApplyPass = () => {
   const navigate = useNavigate();
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [notification, setNotification] = useState({
-    show: false,
-    type: "",
-    message: "",
-  });
+  const [notification, setNotification] = useState({ show: false, type: "", message: "" });
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [avatarFile, setAvatarFile] = useState(null); // kept for compatibility
+  const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
 
-  // Form data state
   const [formData, setFormData] = useState({
     fullName: "",
     rollNumber: "",
     department: "",
-    year: "",
+    year: "", // "1st Year" / "2nd Year"...
     section: "",
     reason: "",
     reasonType: "",
@@ -39,7 +34,7 @@ const ApplyPass = () => {
     email: "",
     phone: "",
     department: "",
-    year: "",
+    yearSemester: "", // "2-1"
     section: "",
     initials: "JD",
   });
@@ -47,13 +42,8 @@ const ApplyPass = () => {
   const fileInputRef = useRef(null);
   const avatarUploadRef = useRef(null);
 
-  // Year options
   const yearOptions = ["Select Year", "1st Year", "2nd Year", "3rd Year", "4th Year"];
-
-  // Section options
   const sectionOptions = ["Select Section", "A", "B", "C", "D", "E", "F"];
-
-  // Reason type options
   const reasonTypeOptions = [
     "Select Reason Type",
     "Medical Emergency",
@@ -65,19 +55,27 @@ const ApplyPass = () => {
     "Other",
   ];
 
+  // ✅ Convert backend yearSemester ("2-1") → dropdown ("2nd Year")
+  const yearFromYearSemester = (ys) => {
+    if (!ys) return "";
+    const s = String(ys).trim(); // "2-1"
+    const yearNum = s.split("-")[0]; // "2"
+    if (yearNum === "1") return "1st Year";
+    if (yearNum === "2") return "2nd Year";
+    if (yearNum === "3") return "3rd Year";
+    if (yearNum === "4") return "4th Year";
+    return "";
+  };
+
   useEffect(() => {
     checkAuthentication();
     loadUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Small & responsive toast notification
   const showNotification = (type, message) => {
     const msg = (message || "").toString();
-
-    // keep toast compact even if backend sends long text
     const safeMsg = msg.length > 160 ? msg.slice(0, 160) + "..." : msg;
-
     setNotification({ show: true, type, message: safeMsg });
 
     window.clearTimeout(showNotification._t);
@@ -86,91 +84,8 @@ const ApplyPass = () => {
     }, 4000);
   };
 
-  const closeNotification = () => {
-    setNotification({ show: false, type: "", message: "" });
-  };
+  const closeNotification = () => setNotification({ show: false, type: "", message: "" });
 
-  // Check authentication
-  const checkAuthentication = async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:5000/api/students/check-auth", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json();
-
-      if (!data.success || !data.isAuthenticated) {
-        clearStorageAndRedirect();
-        return;
-      }
-
-      if (data.user) {
-        const updatedUser = {
-          firstName: data.user.firstName || "",
-          lastName: data.user.lastName || "",
-          studentId: data.user.studentId || "",
-          email: data.user.email || "",
-          phone: data.user.phone || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          initials:
-            data.user.initials ||
-            ((data.user.firstName?.charAt(0) || "J") + (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-        };
-
-        setUser(updatedUser);
-
-        // Pre-fill form
-        setFormData((prev) => ({
-          ...prev,
-          fullName: `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim(),
-          rollNumber: data.user.studentId || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          contactNumber: data.user.phone || "",
-        }));
-      }
-    } catch (error) {
-      console.error("Authentication error:", error);
-
-      const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-
-      if (storedUser.firstName && storedUser.studentId) {
-        setUser((prev) => ({
-          ...prev,
-          ...storedUser,
-          initials: ((storedUser.firstName?.charAt(0) || "J") + (storedUser.lastName?.charAt(0) || "D")).toUpperCase(),
-        }));
-
-        setFormData((prev) => ({
-          ...prev,
-          fullName: `${storedUser.firstName || ""} ${storedUser.lastName || ""}`.trim(),
-          rollNumber: storedUser.studentId || "",
-          department: storedUser.department || "",
-          year: storedUser.year || "",
-          section: storedUser.section || "",
-          contactNumber: storedUser.phone || "",
-        }));
-      } else {
-        clearStorageAndRedirect();
-      }
-    }
-  };
-
-  // Clear storage and redirect
   const clearStorageAndRedirect = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -179,7 +94,66 @@ const ApplyPass = () => {
     navigate("/student-login");
   };
 
-  // Load user data
+  // ✅ Helper: apply user to state + form consistently
+  const hydrateFromUser = (u) => {
+    const yearText = yearFromYearSemester(u?.yearSemester);
+
+    const updatedUser = {
+      firstName: u?.firstName || "",
+      lastName: u?.lastName || "",
+      studentId: u?.studentId || "",
+      email: u?.email || "",
+      phone: u?.phone || "",
+      department: u?.department || "",
+      yearSemester: u?.yearSemester || "",
+      section: u?.section || "",
+      initials:
+        u?.initials ||
+        ((u?.firstName?.charAt(0) || "J") + (u?.lastName?.charAt(0) || "D")).toUpperCase(),
+    };
+
+    setUser(updatedUser);
+
+    // ✅ Pre-fill locked fields
+    setFormData((prev) => ({
+      ...prev,
+      fullName: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
+      rollNumber: updatedUser.studentId,
+      department: updatedUser.department,
+      year: yearText, // ✅ now works
+      section: updatedUser.section,
+      contactNumber: updatedUser.phone,
+    }));
+  };
+
+  const checkAuthentication = async () => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) return navigate("/student-login");
+
+    try {
+      const response = await fetch("http://localhost:5000/api/students/check-auth", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+      if (!data.success || !data.isAuthenticated) return clearStorageAndRedirect();
+
+      if (data.user) {
+        hydrateFromUser(data.user);
+
+        // ✅ keep storage synced
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      }
+    } catch (err) {
+      // fallback to stored user
+      const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
+      if (storedUser?.studentId) hydrateFromUser(storedUser);
+      else clearStorageAndRedirect();
+    }
+  };
+
   const loadUserData = async () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) return;
@@ -187,220 +161,119 @@ const ApplyPass = () => {
     try {
       const response = await fetch("http://localhost:5000/api/students/profile", {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (!response.ok) return;
 
-        if (data.success && data.user) {
-          const updatedUser = {
-            firstName: data.user.firstName || "",
-            lastName: data.user.lastName || "",
-            studentId: data.user.studentId || "",
-            email: data.user.email || "",
-            phone: data.user.phone || "",
-            department: data.user.department || "",
-            year: data.user.year || "",
-            section: data.user.section || "",
-            initials:
-              data.user.initials ||
-              ((data.user.firstName?.charAt(0) || "J") + (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-          };
+      const data = await response.json();
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
 
-          setUser(updatedUser);
-
-          setFormData((prev) => ({
-            ...prev,
-            fullName: `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim(),
-            rollNumber: data.user.studentId || "",
-            department: data.user.department || "",
-            year: data.user.year || "",
-            section: data.user.section || "",
-            contactNumber: data.user.phone || "",
-          }));
-        }
+        // ✅ keep storage synced
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       }
-    } catch (error) {
-      console.log("Using demo user data");
-      const demoUser = {
-        firstName: "John",
-        lastName: "Doe",
-        studentId: "CS2023001",
-        email: "john.doe@college.edu",
-        phone: "+91 9876543210",
-        department: "Computer Science",
-        year: "3rd Year",
-        section: "A",
-        initials: "JD",
-      };
-
-      setUser(demoUser);
-      setFormData({
-        fullName: "John Doe",
-        rollNumber: "CS2023001",
-        department: "Computer Science",
-        year: "3rd Year",
-        section: "A",
-        reason: "",
-        reasonType: "",
-        contactNumber: "+91 9876543210",
-      });
+    } catch (e) {
+      // ignore
     }
   };
 
-  // Handle form input changes
+  // ✅ Block edits for locked fields
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const locked = ["fullName", "rollNumber", "department", "year", "section", "contactNumber"];
+    if (locked.includes(name)) return;
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle file selection
+  // files
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     processFiles(files);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Process selected files
   const processFiles = (files) => {
     const validFiles = files.filter((file) => {
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024;
       const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
-
-      if (file.size > maxSize) {
-        showNotification("error", `File ${file.name} exceeds 5MB limit`);
-        return false;
-      }
-
-      if (!allowedTypes.includes(file.type)) {
-        showNotification("error", `File ${file.name} must be PDF, JPG, or PNG`);
-        return false;
-      }
-
+      if (file.size > maxSize) return showNotification("error", `File ${file.name} exceeds 5MB limit`), false;
+      if (!allowedTypes.includes(file.type))
+        return showNotification("error", `File ${file.name} must be PDF, JPG, or PNG`), false;
       return true;
     });
-
     setSelectedFiles((prev) => [...prev, ...validFiles]);
   };
 
-  // Remove file
-  const removeFile = (index) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removeFile = (index) => setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
 
-  // Format file size
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + " bytes";
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / 1048576).toFixed(1) + " MB";
   };
 
-  // Handle avatar change
+  // avatar
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setAvatarFile(file);
 
     const reader = new FileReader();
     reader.onload = (ev) => {
       setAvatarPreview(ev.target.result);
-
       const updatedUser = { ...user, avatar: ev.target.result };
       setUser(updatedUser);
-
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token) {
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        sessionStorage.setItem("user", JSON.stringify(updatedUser));
-      }
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      sessionStorage.setItem("user", JSON.stringify(updatedUser));
     };
     reader.readAsDataURL(file);
   };
 
-  // Handle profile form submit
+  // ✅ Profile update: only phone + yearSemester should change
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-
     const fd = new FormData(e.target);
 
     const updatedData = {
-      firstName: fd.get("firstName"),
-      lastName: fd.get("lastName"),
       phone: fd.get("phone"),
-      department: fd.get("department"),
-      year: fd.get("year"),
-      section: fd.get("section"),
+      yearSemester: fd.get("yearSemester"),
     };
 
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (!token) {
-      showNotification("error", "You need to be logged in to update profile");
-      return;
-    }
+    if (!token) return showNotification("error", "You need to be logged in to update profile");
 
     try {
       const response = await fetch("http://localhost:5000/api/students/update-profile", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updatedData),
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        const updatedUser = {
-          ...user,
-          ...updatedData,
-          initials: ((updatedData.firstName || "J").charAt(0) + (updatedData.lastName || "D").charAt(0)).toUpperCase(),
-        };
-        setUser(updatedUser);
+      if (data.success && data.user) {
+        // ✅ reflect updated DB data everywhere
+        hydrateFromUser(data.user);
 
-        setFormData((prev) => ({
-          ...prev,
-          fullName: `${updatedData.firstName || ""} ${updatedData.lastName || ""}`.trim(),
-          department: updatedData.department || "",
-          year: updatedData.year || "",
-          section: updatedData.section || "",
-          contactNumber: updatedData.phone || "",
-        }));
-
-        localStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        localStorage.setItem("token", data.token || token);
-        sessionStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        sessionStorage.setItem("token", data.token || token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
 
         showNotification("success", "Profile updated successfully!");
         setShowProfileModal(false);
       } else {
-        showNotification("error", "Failed to update profile: " + (data.message || "Unknown error"));
+        showNotification("error", data.message || "Failed to update profile");
       }
     } catch (error) {
-      console.error("Update profile error:", error);
       showNotification("error", "Error updating profile. Please try again.");
     }
   };
 
-  // Handle logout
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to logout?")) return;
-
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
     try {
       if (token) {
         await fetch("http://localhost:5000/api/students/logout", {
@@ -408,117 +281,79 @@ const ApplyPass = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch (e) {
+      // ignore
     } finally {
       clearStorageAndRedirect();
     }
   };
 
-  // Update initials when first or last name changes
   const updateInitials = () => {
     const initials = ((user.firstName || "J").charAt(0) + (user.lastName || "D").charAt(0)).toUpperCase();
     setUser((prev) => ({ ...prev, initials }));
   };
 
-  // Validate form
   const validateForm = () => {
-    if (!formData.fullName.trim()) {
-      showNotification("error", "Please enter your full name");
-      return false;
-    }
-    if (!formData.rollNumber.trim()) {
-      showNotification("error", "Please enter your roll number");
-      return false;
-    }
-    if (!formData.department.trim()) {
-      showNotification("error", "Please enter your department");
-      return false;
-    }
-    if (!formData.year) {
-      showNotification("error", "Please select your year");
-      return false;
-    }
-    if (!formData.section) {
-      showNotification("error", "Please select your section");
-      return false;
-    }
-    if (!formData.reasonType) {
-      showNotification("error", "Please select reason type");
-      return false;
-    }
-    if (!formData.reason.trim()) {
-      showNotification("error", "Please enter reason details");
-      return false;
-    }
-    if (!formData.contactNumber.trim()) {
-      showNotification("error", "Please enter your contact number");
-      return false;
-    }
+    if (!formData.fullName.trim()) return showNotification("error", "Profile not loaded (Name missing)."), false;
+    if (!formData.rollNumber.trim()) return showNotification("error", "Profile not loaded (Roll missing)."), false;
+    if (!formData.year) return showNotification("error", "Profile not loaded (Year missing)."), false;
+    if (!formData.section) return showNotification("error", "Profile not loaded (Section missing)."), false;
+
+    if (!formData.reasonType) return showNotification("error", "Please select reason type"), false;
+    if (!formData.reason.trim()) return showNotification("error", "Please enter reason details"), false;
+
+    if (!formData.contactNumber.trim()) return showNotification("error", "Profile not loaded (Phone missing)."), false;
     return true;
   };
 
-  // Submit application
   const submitApplication = async () => {
     if (!validateForm()) return;
 
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) {
-      showNotification("error", "Please login again");
-      navigate("/student-login");
-      return;
-    }
+    if (!token) return showNotification("error", "Please login again"), navigate("/student-login");
 
     const submitFormData = new FormData();
+
+    // ⚠️ Backend should still trust token+DB, but ok to send:
     submitFormData.append("fullName", formData.fullName);
     submitFormData.append("rollNumber", formData.rollNumber);
     submitFormData.append("department", formData.department);
     submitFormData.append("year", formData.year);
     submitFormData.append("section", formData.section);
+    submitFormData.append("contactNumber", formData.contactNumber);
+
     submitFormData.append("reasonType", formData.reasonType);
     submitFormData.append("reason", formData.reason);
-    submitFormData.append("contactNumber", formData.contactNumber);
+
     submitFormData.append("studentId", user.studentId);
     submitFormData.append("studentEmail", user.email);
 
-    selectedFiles.forEach((file) => {
-      submitFormData.append("documents", file);
-    });
+    selectedFiles.forEach((file) => submitFormData.append("documents", file));
 
     try {
       const response = await fetch("http://localhost:5000/api/outpass/apply", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: submitFormData,
       });
 
       const data = await response.json();
-
       if (data.success) {
         showNotification("success", "Out-pass application submitted successfully!");
-
         setTimeout(() => {
-          setFormData((prev) => ({
-            ...prev,
-            reason: "",
-            reasonType: "",
-          }));
+          setFormData((prev) => ({ ...prev, reason: "", reasonType: "" }));
           setSelectedFiles([]);
         }, 1200);
       } else {
         showNotification("error", data.message || "Failed to submit application");
       }
-    } catch (error) {
-      console.error("Error submitting application:", error);
+    } catch (err) {
       showNotification("error", "Failed to submit application. Please try again.");
     }
   };
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
       <Navbar
         user={user}
         avatarPreview={avatarPreview}
@@ -528,7 +363,6 @@ const ApplyPass = () => {
         handleLogout={handleLogout}
       />
 
-      {/* Profile Edit Modal */}
       <ProfileModal
         user={user}
         setUser={setUser}
@@ -543,10 +377,8 @@ const ApplyPass = () => {
       />
 
       <div className="dashboard-container-inner">
-        {/* Sidebar */}
         <Sidebar />
 
-        {/* Main Content */}
         <main className="main-content apply-pass-page">
           <div className="apply-pass-wrapper">
             <div className="apply-pass-form-container">
@@ -557,11 +389,11 @@ const ApplyPass = () => {
                   </div>
                   <div className="title-content">
                     <h1>Apply Out-Pass</h1>
+                    <small style={{ opacity: 0.7 }}>Profile details are auto-filled & locked.</small>
                   </div>
                 </div>
 
                 <div className="form-content">
-                  {/* Form Row 1: Full Name & Roll Number */}
                   <div className="form-row-simple">
                     <div className="form-field-simple">
                       <label htmlFor="fullName">
@@ -571,9 +403,8 @@ const ApplyPass = () => {
                         type="text"
                         id="fullName"
                         name="fullName"
-                        placeholder="Full Name"
                         value={formData.fullName}
-                        onChange={handleInputChange}
+                        readOnly
                         className="form-input"
                       />
                     </div>
@@ -586,15 +417,13 @@ const ApplyPass = () => {
                         type="text"
                         id="rollNumber"
                         name="rollNumber"
-                        placeholder="Roll Number"
                         value={formData.rollNumber}
-                        onChange={handleInputChange}
+                        readOnly
                         className="form-input"
                       />
                     </div>
                   </div>
 
-                  {/* Form Row 2: Department & Year-Section */}
                   <div className="form-row-simple">
                     <div className="form-field-simple">
                       <label htmlFor="department">
@@ -604,9 +433,8 @@ const ApplyPass = () => {
                         type="text"
                         id="department"
                         name="department"
-                        placeholder="Department"
                         value={formData.department}
-                        onChange={handleInputChange}
+                        readOnly
                         className="form-input"
                       />
                     </div>
@@ -618,16 +446,10 @@ const ApplyPass = () => {
                       <div className="year-sem-select-grid">
                         <div className="select-group">
                           <div className="select-wrapper">
-                            <select
-                              id="year"
-                              name="year"
-                              value={formData.year}
-                              onChange={handleInputChange}
-                              className="form-select"
-                            >
-                              {yearOptions.map((year, index) => (
-                                <option key={index} value={year === "Select Year" ? "" : year}>
-                                  {year}
+                            <select id="year" name="year" value={formData.year} disabled className="form-select">
+                              {yearOptions.map((y, i) => (
+                                <option key={i} value={y === "Select Year" ? "" : y}>
+                                  {y}
                                 </option>
                               ))}
                             </select>
@@ -641,12 +463,12 @@ const ApplyPass = () => {
                               id="section"
                               name="section"
                               value={formData.section}
-                              onChange={handleInputChange}
+                              disabled
                               className="form-select"
                             >
-                              {sectionOptions.map((section, index) => (
-                                <option key={index} value={section === "Select Section" ? "" : section}>
-                                  {section}
+                              {sectionOptions.map((s, i) => (
+                                <option key={i} value={s === "Select Section" ? "" : s}>
+                                  {s}
                                 </option>
                               ))}
                             </select>
@@ -657,7 +479,6 @@ const ApplyPass = () => {
                     </div>
                   </div>
 
-                  {/* Reason Type & Contact Number Row */}
                   <div className="form-row-simple">
                     <div className="form-field-simple">
                       <label htmlFor="reasonType">
@@ -671,9 +492,9 @@ const ApplyPass = () => {
                           onChange={handleInputChange}
                           className="form-select"
                         >
-                          {reasonTypeOptions.map((reasonType, index) => (
-                            <option key={index} value={reasonType === "Select Reason Type" ? "" : reasonType}>
-                              {reasonType}
+                          {reasonTypeOptions.map((rt, i) => (
+                            <option key={i} value={rt === "Select Reason Type" ? "" : rt}>
+                              {rt}
                             </option>
                           ))}
                         </select>
@@ -689,15 +510,13 @@ const ApplyPass = () => {
                         type="tel"
                         id="contactNumber"
                         name="contactNumber"
-                        placeholder="Phone"
                         value={formData.contactNumber}
-                        onChange={handleInputChange}
+                        readOnly
                         className="form-input"
                       />
                     </div>
                   </div>
 
-                  {/* Reason for Leaving */}
                   <div className="form-field-simple full-width">
                     <label htmlFor="reason">
                       <i className="fas fa-comment-alt"></i> Reason Details
@@ -710,10 +529,9 @@ const ApplyPass = () => {
                       onChange={handleInputChange}
                       className="form-textarea"
                       rows="3"
-                    ></textarea>
+                    />
                   </div>
 
-                  {/* Attach Document Section */}
                   <div className="form-field-simple full-width">
                     <label>
                       <i className="fas fa-paperclip"></i> Attach Document
@@ -746,13 +564,6 @@ const ApplyPass = () => {
 
                       {selectedFiles.length > 0 && (
                         <div className="selected-files-list">
-                          <div className="files-header-row">
-                            <span className="files-count">
-                              <i className="fas fa-file"></i> {selectedFiles.length} file
-                              {selectedFiles.length !== 1 ? "s" : ""} selected
-                            </span>
-                          </div>
-
                           <div className="files-list">
                             {selectedFiles.map((file, index) => (
                               <div className="file-item" key={index}>
@@ -774,7 +585,6 @@ const ApplyPass = () => {
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <div className="submit-section-simple">
                     <button type="button" className="submit-btn" onClick={submitApplication}>
                       Submit Request
@@ -787,20 +597,14 @@ const ApplyPass = () => {
         </main>
       </div>
 
-      {/* Footer */}
       <footer className="dashboard-footer">
         <p>© 2024 - Online Student Out-Pass System. All rights reserved.</p>
       </footer>
 
-      {/* ✅ Small Responsive Toast */}
       {notification.show && (
         <div className="toast-wrap">
           <div className={`toast toast-${notification.type}`} role="status" aria-live="polite">
-            <i
-              className={`fas fa-${
-                notification.type === "success" ? "check-circle" : "exclamation-circle"
-              }`}
-            />
+            <i className={`fas fa-${notification.type === "success" ? "check-circle" : "exclamation-circle"}`} />
             <span className="toast-text">{notification.message}</span>
             <button type="button" className="toast-close" onClick={closeNotification} aria-label="Close notification">
               <i className="fas fa-times" />

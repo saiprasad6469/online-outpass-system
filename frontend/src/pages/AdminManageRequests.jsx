@@ -5,6 +5,8 @@ import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 import "../styles/ManageRequests.css";
 
+const API_BASE = "http://localhost:5000";
+
 const AdminManageRequests = () => {
   const navigate = useNavigate();
 
@@ -29,7 +31,10 @@ const AdminManageRequests = () => {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const [adminNotes, setAdminNotes] = useState("");
+  const [notesError, setNotesError] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
+  // ✅ profile states (same as AdminDashboard)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -38,6 +43,9 @@ const AdminManageRequests = () => {
   const profileDropdownRef = useRef(null);
   const sidebarRef = useRef(null);
 
+  const getAdminToken = () =>
+    localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
+
   /* ===================== AUTH ===================== */
   useEffect(() => {
     checkAuthentication();
@@ -45,9 +53,7 @@ const AdminManageRequests = () => {
   }, []);
 
   const checkAuthentication = async () => {
-    const token =
-      localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
-
+    const token = getAdminToken();
     if (!token) {
       navigate("/admin-login");
       return;
@@ -65,17 +71,20 @@ const AdminManageRequests = () => {
           ...prev,
           name: storedAdmin.adminName,
           id: storedAdmin.adminId,
-          email: storedAdmin.email,
-          phone: storedAdmin.phone,
-          department: storedAdmin.department,
-          year: storedAdmin.year,
-          section: storedAdmin.section,
+          email: storedAdmin.email || prev.email,
+          phone: storedAdmin.phone || prev.phone,
+          department: storedAdmin.department || prev.department,
+          year: storedAdmin.year || prev.year,
+          section: storedAdmin.section || prev.section,
           initials: (
             (storedAdmin.adminName?.split(" ")[0]?.charAt(0) || "A") +
             (storedAdmin.adminName?.split(" ")[1]?.charAt(0) || "D")
           ).toUpperCase(),
         }));
       }
+
+      // ✅ load avatar if saved
+      if (storedAdmin?.avatar) setAvatarPreview(storedAdmin.avatar);
     } catch (error) {
       console.error("Error parsing admin data:", error);
     }
@@ -103,9 +112,7 @@ const AdminManageRequests = () => {
       const updatedAdmin = { ...adminData, avatar: ev.target.result };
       setAdminData(updatedAdmin);
 
-      const token =
-        localStorage.getItem("adminToken") ||
-        sessionStorage.getItem("adminToken");
+      const token = getAdminToken();
       if (token) {
         localStorage.setItem("adminUser", JSON.stringify(updatedAdmin));
         sessionStorage.setItem("adminUser", JSON.stringify(updatedAdmin));
@@ -121,12 +128,11 @@ const AdminManageRequests = () => {
   }, []);
 
   const fetchAdminRequests = async () => {
-    const token =
-      localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
+    const token = getAdminToken();
     if (!token) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/outpasses", {
+      const res = await fetch(`${API_BASE}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -135,11 +141,17 @@ const AdminManageRequests = () => {
       try {
         data = JSON.parse(text);
       } catch {
-        console.error("ManageRequests response is not JSON:", text);
+        console.error("Admin outpasses response is not JSON:", text);
         return;
       }
 
-      if (data.success && Array.isArray(data.outpasses)) {
+      if (res.status === 401) {
+        alert("Unauthorized. Please login again.");
+        handleLogout();
+        return;
+      }
+
+      if (res.ok && data.success && Array.isArray(data.outpasses)) {
         setRequests(data.outpasses);
       }
     } catch (err) {
@@ -168,10 +180,7 @@ const AdminManageRequests = () => {
 
   const totalPages = Math.ceil(filteredRequests.length / entriesPerPage) || 1;
   const startIndex = (currentPage - 1) * entriesPerPage;
-  const paginatedRequests = filteredRequests.slice(
-    startIndex,
-    startIndex + entriesPerPage
-  );
+  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + entriesPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -213,7 +222,6 @@ const AdminManageRequests = () => {
         className = "status-pending";
         displayText = "Pending";
     }
-
     return { className, displayText };
   };
 
@@ -221,110 +229,175 @@ const AdminManageRequests = () => {
     if (!filePath) return null;
     if (/^https?:\/\//i.test(filePath)) return filePath;
     const normalized = filePath.startsWith("/") ? filePath : `/${filePath}`;
-    return `http://localhost:5000${normalized}`;
+    return `${API_BASE}${normalized}`;
   };
 
-  /* ===================== ✅ STATUS UPDATE (DB + UI) ===================== */
-  const handleStatusUpdate = async (outpassId, newStatus) => {
-    const token =
-      localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
+  /* ===================== NOTES VALIDATION ===================== */
+  const validateRejectNotes = () => {
+    const msg = (adminNotes || "").trim();
+    if (!msg) {
+      setNotesError("Rejection reason is required.");
+      return false;
+    }
+    if (msg.length < 5) {
+      setNotesError("Please write a clear reason (min 5 characters).");
+      return false;
+    }
+    setNotesError("");
+    return true;
+  };
+
+  /* ===================== SAVE NOTES ===================== */
+  const handleSaveNotes = async () => {
+    if (!selectedRequest?._id) return;
+
+    const token = getAdminToken();
     if (!token) {
-      alert("Admin token missing. Please login again.");
-      navigate("/admin-login");
+      alert("Unauthorized. Please login again.");
+      handleLogout();
       return;
     }
 
-    // Save previous state for rollback
-    const prevRequests = requests;
-    const prevSelected = selectedRequest;
-
-    // Optimistic UI
-    setRequests((prev) =>
-      prev.map((r) => (r._id === outpassId ? { ...r, status: newStatus } : r))
-    );
-
-    if (selectedRequest?._id === outpassId) {
-      setSelectedRequest((prev) => ({ ...prev, status: newStatus }));
-    }
-
+    setSavingNotes(true);
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/outpasses/${outpassId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus }), // "Approved" | "Rejected" | "Pending"
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/admin/outpasses/${selectedRequest._id}/notes`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminNotes: (adminNotes || "").trim() }),
+      });
 
       const text = await res.text();
       let data = {};
       try {
         data = JSON.parse(text);
       } catch {
-        // rollback if server didn't return JSON
-        setRequests(prevRequests);
-        setSelectedRequest(prevSelected);
-        console.error("Status update response not JSON:", text);
-        alert("Server error while updating status");
+        console.error("Save notes response not JSON:", text);
+        alert("Server error while saving notes");
+        return;
+      }
+
+      if (res.status === 401) {
+        alert("Unauthorized. Please login again.");
+        handleLogout();
         return;
       }
 
       if (!res.ok || !data.success) {
-        // rollback on error
+        alert(data.message || "Failed to save notes");
+        return;
+      }
+
+      const savedNotes = data.outpass?.adminNotes ?? (adminNotes || "").trim();
+
+      setSelectedRequest((prev) => ({ ...prev, adminNotes: savedNotes }));
+      setRequests((prev) => prev.map((r) => (r._id === selectedRequest._id ? { ...r, adminNotes: savedNotes } : r)));
+
+      alert("Rejection reason saved ✅");
+    } catch (err) {
+      console.error(err);
+      alert("Network error while saving notes");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleClearNotes = () => {
+    setAdminNotes("");
+    setNotesError("");
+  };
+
+  /* ===================== STATUS UPDATE ===================== */
+  const handleStatusUpdate = async (outpassMongoId, newStatus) => {
+    const token = getAdminToken();
+    if (!token) {
+      alert("Admin token missing. Please login again.");
+      handleLogout();
+      return;
+    }
+
+    if (String(newStatus).toLowerCase() === "rejected") {
+      if (!validateRejectNotes()) return;
+    } else {
+      setNotesError("");
+    }
+
+    const notesToSend = (adminNotes || "").trim();
+
+    const prevRequests = requests;
+    const prevSelected = selectedRequest;
+
+    setRequests((prev) =>
+      prev.map((r) => (r._id === outpassMongoId ? { ...r, status: newStatus, adminNotes: notesToSend } : r))
+    );
+    if (selectedRequest?._id === outpassMongoId) {
+      setSelectedRequest((prev) => ({ ...prev, status: newStatus, adminNotes: notesToSend }));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/outpasses/${outpassMongoId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus, adminNotes: notesToSend }),
+      });
+
+      const text = await res.text();
+      let data = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Status update response not JSON:", text);
+        setRequests(prevRequests);
+        setSelectedRequest(prevSelected);
+        alert("Server error while updating status");
+        return;
+      }
+
+      if (res.status === 401) {
+        alert("Unauthorized. Please login again.");
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok || !data.success) {
         setRequests(prevRequests);
         setSelectedRequest(prevSelected);
         alert(data.message || "Failed to update status");
         return;
       }
 
-      // Keep UI in sync with DB response
-      if (data.outpass && data.outpass._id) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r._id === data.outpass._id
-              ? { ...r, status: data.outpass.status }
-              : r
-          )
-        );
-
-        if (selectedRequest?._id === data.outpass._id) {
-          setSelectedRequest((prev) => ({ ...prev, status: data.outpass.status }));
-        }
+      const updated = data.outpass || null;
+      if (updated?._id) {
+        setRequests((prev) => prev.map((r) => (r._id === updated._id ? { ...r, ...updated } : r)));
+        if (selectedRequest?._id === updated._id) setSelectedRequest((prev) => ({ ...prev, ...updated }));
       }
 
+      setNotesError("");
       alert(`Request ${newStatus} successfully!`);
     } catch (err) {
-      // rollback on network error
+      console.error("Status update API error:", err);
       setRequests(prevRequests);
       setSelectedRequest(prevSelected);
-      console.error("Status update API error:", err);
       alert("Network error while updating status");
-    }
-  };
-
-  const handleSaveNotes = () => {
-    if (selectedRequest) {
-      alert("Admin notes saved successfully!");
-      setAdminNotes("");
     }
   };
 
   const handleRowClick = (request) => {
     setSelectedRequest(request);
     setShowDetailsModal(true);
+    setAdminNotes(request.adminNotes || "");
+    setNotesError("");
   };
 
   /* ===================== CLICK OUTSIDE ===================== */
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
         setShowProfileDropdown(false);
       }
 
@@ -345,7 +418,7 @@ const AdminManageRequests = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
+      {/* ✅ Header (same as AdminDashboard) */}
       <header className="dashboard-header">
         <Link to="/" className="logo">
           <i className="fas fa-graduation-cap"></i>
@@ -358,11 +431,7 @@ const AdminManageRequests = () => {
           onClick={() => setShowProfileDropdown(!showProfileDropdown)}
         >
           <div className="user-avatar">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt={adminData.name} />
-            ) : (
-              <span>{adminData.initials}</span>
-            )}
+            {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
           </div>
 
           <div className="user-info">
@@ -374,11 +443,7 @@ const AdminManageRequests = () => {
             <div className="profile-dropdown active">
               <div className="profile-header">
                 <div className="profile-avatar-large">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={adminData.name} />
-                  ) : (
-                    <span>{adminData.initials}</span>
-                  )}
+                  {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
                 </div>
                 <div className="profile-header-info">
                   <h3>{adminData.name}</h3>
@@ -399,21 +464,24 @@ const AdminManageRequests = () => {
                   <i className="fas fa-user-edit"></i>
                   <span>Edit Profile</span>
                 </a>
-                <a href="#" className="profile-menu-item">
+
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-cog"></i>
                   <span>Settings</span>
                 </a>
-                <a href="#" className="profile-menu-item">
+
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-bell"></i>
                   <span>Notifications</span>
                 </a>
 
                 <div className="profile-divider"></div>
 
-                <a href="#" className="profile-menu-item">
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-question-circle"></i>
                   <span>Help & Support</span>
                 </a>
+
                 <a
                   href="#"
                   className="profile-menu-item"
@@ -432,19 +500,13 @@ const AdminManageRequests = () => {
       </header>
 
       <div className="dashboard-container-inner">
-        <button
-          className="mobile-sidebar-toggle"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
+        <button className="mobile-sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
           <i className={`fas ${sidebarOpen ? "fa-times" : "fa-bars"}`}></i>
           <span>Menu</span>
         </button>
 
         <div ref={sidebarRef}>
-          <AdminSidebar
-            isMobileOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
+          <AdminSidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
 
         <main className="main-content">
@@ -528,19 +590,13 @@ const AdminManageRequests = () => {
                   ) : (
                     paginatedRequests.map((request) => {
                       const statusInfo = getStatusInfo(request.status);
-
                       const displayName = request.studentName || "N/A";
                       const displayRoll = request.rollNo || "-";
-                      const displayOutDT =
-                        request.outDate || request.appliedAt || null;
-                      const displayPurpose =
-                        request.reasonType || request.purpose || "-";
+                      const displayOutDT = request.outDate || request.appliedAt || null;
+                      const displayPurpose = request.reasonType || request.purpose || "-";
 
                       return (
-                        <tr
-                          key={request._id}
-                          onClick={() => handleRowClick(request)}
-                        >
+                        <tr key={request._id} onClick={() => handleRowClick(request)}>
                           <td>
                             <div className="student-info">
                               <div className="student-avatar">
@@ -554,18 +610,13 @@ const AdminManageRequests = () => {
                           <td>{formatDateTime(displayOutDT)}</td>
 
                           <td>
-                            <span className={`status ${statusInfo.className}`}>
-                              {statusInfo.displayText}
-                            </span>
+                            <span className={`status ${statusInfo.className}`}>{statusInfo.displayText}</span>
                           </td>
 
                           <td>{displayPurpose}</td>
 
                           <td>
-                            <div
-                              className="action-buttons-small"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className="action-buttons-small" onClick={(e) => e.stopPropagation()}>
                               <button
                                 className="action-btn approve-btn"
                                 title="Approve"
@@ -582,7 +633,8 @@ const AdminManageRequests = () => {
                                 title="Reject"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStatusUpdate(request._id, "Rejected");
+                                  handleRowClick(request);
+                                  setNotesError("Write reason and click Reject inside modal.");
                                 }}
                               >
                                 <i className="fas fa-times"></i>
@@ -612,16 +664,13 @@ const AdminManageRequests = () => {
             <div className="pagination">
               <div className="pagination-info">
                 Showing {filteredRequests.length === 0 ? 0 : startIndex + 1} to{" "}
-                {Math.min(startIndex + entriesPerPage, filteredRequests.length)} of{" "}
-                {filteredRequests.length} entries
+                {Math.min(startIndex + entriesPerPage, filteredRequests.length)} of {filteredRequests.length} entries
               </div>
 
               <div className="pagination-controls">
                 <button
                   className="pagination-btn"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   <i className="fas fa-chevron-left"></i> Previous
@@ -632,40 +681,24 @@ const AdminManageRequests = () => {
                     let pageNum;
                     if (totalPages <= 5) pageNum = i + 1;
                     else if (currentPage <= 3) pageNum = i + 1;
-                    else if (currentPage >= totalPages - 2)
-                      pageNum = totalPages - 4 + i;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
                     else pageNum = currentPage - 2 + i;
 
                     return (
                       <button
                         key={pageNum}
-                        className={`pagination-number ${
-                          currentPage === pageNum ? "active" : ""
-                        }`}
+                        className={`pagination-number ${currentPage === pageNum ? "active" : ""}`}
                         onClick={() => setCurrentPage(pageNum)}
                       >
                         {pageNum}
                       </button>
                     );
                   })}
-                  {totalPages > 5 && currentPage < totalPages - 2 && (
-                    <>
-                      <span className="pagination-ellipsis">...</span>
-                      <button
-                        className="pagination-number"
-                        onClick={() => setCurrentPage(totalPages)}
-                      >
-                        {totalPages}
-                      </button>
-                    </>
-                  )}
                 </div>
 
                 <button
                   className="pagination-btn"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
                 >
                   Next <i className="fas fa-chevron-right"></i>
@@ -678,23 +711,15 @@ const AdminManageRequests = () => {
 
       {/* DETAILS MODAL */}
       {showDetailsModal && selectedRequest && (
-        <div
-          className="details-modal-overlay active"
-          onClick={() => setShowDetailsModal(false)}
-        >
+        <div className="details-modal-overlay active" onClick={() => setShowDetailsModal(false)}>
           <div className="details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
                 <h3>{selectedRequest.studentName || "N/A"}</h3>
-                <p className="roll-no">
-                  Roll No: {selectedRequest.rollNo || "-"}
-                </p>
+                <p className="roll-no">Roll No: {selectedRequest.rollNo || "-"}</p>
               </div>
 
-              <button
-                className="close-modal"
-                onClick={() => setShowDetailsModal(false)}
-              >
+              <button className="close-modal" onClick={() => setShowDetailsModal(false)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -725,6 +750,13 @@ const AdminManageRequests = () => {
                       <span className="detail-label">Reason</span>
                       <div className="reason-card">{selectedRequest.reason || "-"}</div>
                     </div>
+
+                    {selectedRequest.adminNotes ? (
+                      <div className="detail-item full-width">
+                        <span className="detail-label">Saved Admin Notes</span>
+                        <div className="reason-card">{selectedRequest.adminNotes}</div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -733,33 +765,19 @@ const AdminManageRequests = () => {
                     <i className="fas fa-paperclip"></i> Uploaded Documents
                   </h4>
 
-                  {Array.isArray(selectedRequest.documents) &&
-                  selectedRequest.documents.length > 0 ? (
+                  {Array.isArray(selectedRequest.documents) && selectedRequest.documents.length > 0 ? (
                     <div className="docs-grid">
                       {selectedRequest.documents.map((doc, idx) => {
                         const name = doc.fileName || `Document ${idx + 1}`;
                         const type = (doc.fileType || "file").toUpperCase();
-                        const size = doc.fileSize
-                          ? `${Math.round(doc.fileSize / 1024)} KB`
-                          : "";
+                        const size = doc.fileSize ? `${Math.round(doc.fileSize / 1024)} KB` : "";
                         const url = buildDocUrl(doc.filePath);
-
-                        const fileType = (doc.fileType || "").toLowerCase();
-                        const iconClass = fileType.includes("pdf")
-                          ? "fa-file-pdf"
-                          : fileType.includes("image")
-                          ? "fa-file-image"
-                          : fileType.includes("word")
-                          ? "fa-file-word"
-                          : fileType.includes("excel")
-                          ? "fa-file-excel"
-                          : "fa-file";
 
                         return (
                           <div className="doc-card" key={idx}>
                             <div className="doc-left">
                               <div className="doc-icon">
-                                <i className={`fas ${iconClass}`}></i>
+                                <i className="fas fa-file"></i>
                               </div>
 
                               <div className="doc-meta">
@@ -776,21 +794,12 @@ const AdminManageRequests = () => {
                             <div className="doc-actions">
                               {url ? (
                                 <>
-                                  <a
-                                    className="doc-btn doc-view"
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
+                                  <a className="doc-btn doc-view" href={url} target="_blank" rel="noreferrer">
                                     <i className="fas fa-eye"></i>
                                     <span>View</span>
                                   </a>
 
-                                  <a
-                                    className="doc-btn doc-download"
-                                    href={url}
-                                    download
-                                  >
+                                  <a className="doc-btn doc-download" href={url} download>
                                     <i className="fas fa-download"></i>
                                     <span>Download</span>
                                   </a>
@@ -818,11 +827,7 @@ const AdminManageRequests = () => {
 
                   <div className="status-display-modal">
                     <div className="status-info">
-                      <span
-                        className={`status-badge-large ${
-                          getStatusInfo(selectedRequest.status).className
-                        }`}
-                      >
+                      <span className={`status-badge-large ${getStatusInfo(selectedRequest.status).className}`}>
                         {getStatusInfo(selectedRequest.status).displayText}
                       </span>
                     </div>
@@ -842,6 +847,7 @@ const AdminManageRequests = () => {
                         <button
                           className="btn-reject-modal"
                           onClick={() => {
+                            if (!validateRejectNotes()) return;
                             handleStatusUpdate(selectedRequest._id, "Rejected");
                             setShowDetailsModal(false);
                           }}
@@ -853,27 +859,48 @@ const AdminManageRequests = () => {
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div className="details-section">
                   <h4>
-                    <i className="fas fa-sticky-note"></i> Admin Notes (Optional)
+                    <i className="fas fa-sticky-note"></i> Rejection Reason
                   </h4>
 
                   <textarea
                     className="notes-textarea-modal"
-                    placeholder="Enter your notes about this request..."
+                    placeholder="Write the rejection reason..."
                     value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
+                    onChange={(e) => {
+                      setAdminNotes(e.target.value);
+                      if (notesError) setNotesError("");
+                    }}
                     rows="3"
-                  ></textarea>
+                  />
+
+                  {notesError && (
+                    <div style={{ color: "#dc2626", marginTop: 6, fontSize: 13 }}>
+                      <i className="fas fa-exclamation-circle"></i> {notesError}
+                    </div>
+                  )}
 
                   <div className="notes-actions">
-                    <button className="btn-save-notes-modal" onClick={handleSaveNotes}>
-                      <i className="fas fa-save"></i> Save Notes
+                    <button
+                      type="button"
+                      className="btn-save-notes-modal"
+                      onClick={handleSaveNotes}
+                      disabled={savingNotes}
+                      title="Save reason without rejecting"
+                    >
+                      <i className="fas fa-save"></i> {savingNotes ? "Saving..." : "Save Reason"}
                     </button>
-                    <button className="btn-clear-notes" onClick={() => setAdminNotes("")}>
+
+                    <button type="button" className="btn-clear-notes" onClick={handleClearNotes}>
                       <i className="fas fa-trash"></i> Clear
                     </button>
                   </div>
+
+                  <small style={{ opacity: 0.75 }}>
+                    ✅ Reason is stored in MongoDB as <b>adminNotes</b>. Reject action requires this reason.
+                  </small>
                 </div>
               </div>
             </div>
@@ -881,16 +908,13 @@ const AdminManageRequests = () => {
         </div>
       )}
 
-      {/* Profile Modal (kept minimal same as yours) */}
+      {/* ✅ Profile Edit Modal (same as AdminDashboard) */}
       {showProfileModal && (
         <div className="profile-modal-overlay active">
           <div className="profile-modal">
             <div className="modal-header">
               <h2>Edit Admin Profile</h2>
-              <button
-                className="close-modal"
-                onClick={() => setShowProfileModal(false)}
-              >
+              <button className="close-modal" onClick={() => setShowProfileModal(false)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -898,11 +922,7 @@ const AdminManageRequests = () => {
             <div className="modal-content">
               <div className="avatar-edit-section">
                 <div className="avatar-edit">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={adminData.name} />
-                  ) : (
-                    <span>{adminData.initials}</span>
-                  )}
+                  {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
                 </div>
                 <label htmlFor="avatarUpload" className="avatar-change-btn">
                   <i className="fas fa-camera"></i> Change Photo
@@ -916,22 +936,45 @@ const AdminManageRequests = () => {
                 />
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="modal-btn modal-btn-primary"
-                  onClick={() => setShowProfileModal(false)}
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  className="modal-btn modal-btn-secondary"
-                  onClick={() => setShowProfileModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
+              <form>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminName">Full Name</label>
+                    <input type="text" id="adminName" className="form-control" defaultValue={adminData.name} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminEmail">Email</label>
+                    <input type="email" id="adminEmail" className="form-control" defaultValue={adminData.email} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="adminPhone">Phone</label>
+                    <input type="tel" id="adminPhone" className="form-control" defaultValue={adminData.phone} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminDepartment">Department</label>
+                    <input type="text" id="adminDepartment" className="form-control" defaultValue={adminData.department} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="adminSection">Section</label>
+                    <input type="text" id="adminSection" className="form-control" defaultValue={adminData.section} readOnly />
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="modal-btn modal-btn-primary" onClick={() => setShowProfileModal(false)}>
+                    Save Changes
+                  </button>
+                  <button type="button" className="modal-btn modal-btn-secondary" onClick={() => setShowProfileModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

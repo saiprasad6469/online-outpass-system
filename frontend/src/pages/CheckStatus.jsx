@@ -12,22 +12,23 @@ const API_BASE = "http://localhost:5000";
 const CheckStatus = () => {
   const navigate = useNavigate();
 
+  // ✅ SAME user shape as ApplyPass.jsx
   const [user, setUser] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    studentId: "123456",
-    initials: "JD",
+    firstName: "",
+    lastName: "",
+    studentId: "",
     email: "",
     phone: "",
     department: "",
-    year: "",
+    yearSemester: "", // ✅ "2-1"
     section: "",
+    initials: "JD",
   });
 
   // ✅ Toast (small, responsive)
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
 
-  // Navbar/Profile (same as dashboard)
+  // Navbar/Profile (same as ApplyPass)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -52,9 +53,7 @@ const CheckStatus = () => {
 
   /* ===================== TOAST ===================== */
   const showToast = (message, type) => {
-    // success => green, error/warning => red (as you want)
     const normalizedType = type === "success" ? "success" : "error";
-
     const msg = (message || "").toString();
     const safeMsg = msg.length > 160 ? msg.slice(0, 160) + "..." : msg;
 
@@ -67,6 +66,52 @@ const CheckStatus = () => {
   };
 
   const closeToast = () => setToast({ show: false, type: "", message: "" });
+
+  /* ===================== AUTH HELPERS ===================== */
+  const getToken = () => localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  const clearStorageAndRedirect = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    navigate("/student-login");
+  };
+
+  // ✅ Convert backend yearSemester ("2-1") → dropdown text ("2nd Year") if ever needed
+  const yearFromYearSemester = (ys) => {
+    if (!ys) return "";
+    const s = String(ys).trim(); // "2-1"
+    const yearNum = s.split("-")[0]; // "2"
+    if (yearNum === "1") return "1st Year";
+    if (yearNum === "2") return "2nd Year";
+    if (yearNum === "3") return "3rd Year";
+    if (yearNum === "4") return "4th Year";
+    return "";
+  };
+
+  // ✅ SAME hydrateFromUser as ApplyPass.jsx
+  const hydrateFromUser = (u) => {
+    const updatedUser = {
+      firstName: u?.firstName || "",
+      lastName: u?.lastName || "",
+      studentId: u?.studentId || "",
+      email: u?.email || "",
+      phone: u?.phone || "",
+      department: u?.department || "",
+      yearSemester: u?.yearSemester || "",
+      section: u?.section || "",
+      initials:
+        u?.initials ||
+        ((u?.firstName?.charAt(0) || "J") + (u?.lastName?.charAt(0) || "D")).toUpperCase(),
+    };
+
+    setUser(updatedUser);
+
+    // restore avatar if stored
+    const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
+    if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
+  };
 
   /* ===================== AUTH ===================== */
   useEffect(() => {
@@ -87,82 +132,35 @@ const CheckStatus = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const getToken = () => localStorage.getItem("token") || sessionStorage.getItem("token");
-
-  const clearStorageAndRedirect = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
-    navigate("/student-login");
-  };
-
   const checkAuthentication = async () => {
     const token = getToken();
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
+    if (!token) return navigate("/student-login");
 
     try {
       const response = await fetch(`${API_BASE}/api/students/check-auth`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
       const data = await response.json();
-
-      if (!data.success || !data.isAuthenticated) {
-        clearStorageAndRedirect();
-        return;
-      }
+      if (!data.success || !data.isAuthenticated) return clearStorageAndRedirect();
 
       if (data.user) {
-        const updatedUser = {
-          ...user,
-          firstName: data.user.firstName || user.firstName,
-          lastName: data.user.lastName || user.lastName,
-          studentId: data.user.studentId || user.studentId,
-          email: data.user.email || "",
-          phone: data.user.phone || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          initials:
-            data.user.initials ||
-            ((data.user.firstName?.charAt(0) || "J") + (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-        };
+        hydrateFromUser(data.user);
 
-        setUser(updatedUser);
-
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        sessionStorage.setItem("user", JSON.stringify(updatedUser));
-
-        // restore avatar if stored
-        const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-        if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
+        // ✅ keep storage synced (same as ApplyPass)
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       }
-    } catch (error) {
-      console.error("Authentication error:", error);
-
+    } catch (err) {
+      // fallback to stored user
       const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-      if (storedUser.firstName && storedUser.studentId) {
-        setUser((prev) => ({
-          ...prev,
-          ...storedUser,
-          initials: ((storedUser.firstName?.charAt(0) || "J") + (storedUser.lastName?.charAt(0) || "D")).toUpperCase(),
-        }));
-        if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
-      } else {
-        clearStorageAndRedirect();
-      }
+      if (storedUser?.studentId) hydrateFromUser(storedUser);
+      else clearStorageAndRedirect();
     }
   };
 
-  /* ===================== PROFILE (same as dashboard) ===================== */
+  /* ===================== PROFILE (MATCH ApplyPass) ===================== */
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -189,24 +187,18 @@ const CheckStatus = () => {
     setUser((prev) => ({ ...prev, initials }));
   };
 
+  // ✅ ONLY phone + yearSemester (same as ApplyPass.jsx)
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-
     const fd = new FormData(e.target);
+
     const updatedData = {
-      firstName: fd.get("firstName"),
-      lastName: fd.get("lastName"),
       phone: fd.get("phone"),
-      department: fd.get("department"),
-      year: fd.get("year"),
-      section: fd.get("section"),
+      yearSemester: fd.get("yearSemester"),
     };
 
     const token = getToken();
-    if (!token) {
-      showToast("You need to be logged in to update profile", "error");
-      return;
-    }
+    if (!token) return showToast("You need to be logged in to update profile", "error");
 
     try {
       const response = await fetch(`${API_BASE}/api/students/update-profile`, {
@@ -217,18 +209,12 @@ const CheckStatus = () => {
 
       const data = await response.json();
 
-      if (data.success) {
-        const updatedUser = {
-          ...user,
-          ...updatedData,
-          initials: ((updatedData.firstName || "J").charAt(0) + (updatedData.lastName || "D").charAt(0)).toUpperCase(),
-        };
-        setUser(updatedUser);
+      if (data.success && data.user) {
+        // ✅ reflect updated DB data everywhere
+        hydrateFromUser(data.user);
 
-        localStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        localStorage.setItem("token", data.token || token);
-        sessionStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        sessionStorage.setItem("token", data.token || token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
 
         showToast("Profile updated successfully!", "success");
         setShowProfileModal(false);
@@ -236,7 +222,6 @@ const CheckStatus = () => {
         showToast(data.message || "Failed to update profile", "error");
       }
     } catch (error) {
-      console.error("Update profile error:", error);
       showToast("Error updating profile. Please try again.", "error");
     }
   };
@@ -252,8 +237,8 @@ const CheckStatus = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch (e) {
+      // ignore
     } finally {
       clearStorageAndRedirect();
     }
@@ -296,7 +281,6 @@ const CheckStatus = () => {
         setShowNoResults(false);
       }
     } catch (err) {
-      console.error("Failed to load pending outpasses", err);
       setPendingApps([]);
       setFilteredApps([]);
       setShowEmptyState(true);
@@ -322,10 +306,7 @@ const CheckStatus = () => {
     e.preventDefault();
 
     const input = (searchInput.outpassId || "").trim().toLowerCase();
-    if (!input) {
-      showToast("Please enter an Out-Pass ID", "error");
-      return;
-    }
+    if (!input) return showToast("Please enter an Out-Pass ID", "error");
 
     const found = pendingApps.filter((app) => (app.outpassId || "").toLowerCase() === input);
 
@@ -373,7 +354,7 @@ const CheckStatus = () => {
     setFilteredApps(pendingApps);
     setShowNoResults(false);
     setShowEmptyState(pendingApps.length === 0);
-    showToast("Showing all pending applications", "success"); // you wanted red only for errors
+    showToast("Showing all pending applications", "success");
   };
 
   const handleResetSearch = () => {
@@ -386,29 +367,22 @@ const CheckStatus = () => {
 
   /* ===================== CANCEL ===================== */
   const handleCancelOutpass = async (displayOutpassId, mongoId) => {
-    if (!mongoId) {
-      showToast("Cancel failed: missing outpass Mongo ID", "error");
-      return;
-    }
-
+    if (!mongoId) return showToast("Cancel failed: missing outpass Mongo ID", "error");
     if (!window.confirm(`Cancel out-pass ${displayOutpassId}?`)) return;
 
     const token = getToken();
 
     try {
       const res = await fetch(`${API_BASE}/api/outpass/cancel/${mongoId}`, {
-  method: "DELETE",
-  headers: { Authorization: `Bearer ${token}` },
-});
-
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const text = await res.text();
       let data = {};
       try {
         data = JSON.parse(text);
-      } catch {
-        // ignore non-json
-      }
+      } catch {}
 
       if (res.ok && data.success) {
         showToast("Out-pass cancelled successfully", "success");
@@ -418,7 +392,6 @@ const CheckStatus = () => {
         showToast(data.message || "Cancel failed", "error");
       }
     } catch (err) {
-      console.error(err);
       showToast("Cancel failed", "error");
     }
   };
@@ -702,7 +675,7 @@ const CheckStatus = () => {
         </main>
       </div>
 
-      {/* DETAILS MODAL (same as your existing one) */}
+      {/* DETAILS MODAL */}
       {selectedOutpass && (
         <div className="outpass-modal-overlay" onClick={() => setSelectedOutpass(null)}>
           <div className="outpass-modal" onClick={(e) => e.stopPropagation()}>

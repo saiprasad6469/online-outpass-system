@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 
+const API_BASE = "http://localhost:5000";
+
 const AdminReports = () => {
   const navigate = useNavigate();
 
@@ -18,11 +20,9 @@ const AdminReports = () => {
     initials: "AD",
   });
 
-  // ✅ Real data from backend
   const [outpasses, setOutpasses] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Derived stats + chart data
   const [reportsData, setReportsData] = useState({
     outPassRequests: 0,
     approvedRequests: 0,
@@ -45,6 +45,7 @@ const AdminReports = () => {
   const [dateRange, setDateRange] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // ✅ profile states (same as AdminDashboard)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -91,17 +92,20 @@ const AdminReports = () => {
           ...prev,
           name: storedAdmin.adminName,
           id: storedAdmin.adminId,
-          email: storedAdmin.email,
-          phone: storedAdmin.phone,
-          department: storedAdmin.department,
-          year: storedAdmin.year,
-          section: storedAdmin.section,
+          email: storedAdmin.email || prev.email,
+          phone: storedAdmin.phone || prev.phone,
+          department: storedAdmin.department || prev.department,
+          year: storedAdmin.year || prev.year,
+          section: storedAdmin.section || prev.section,
           initials: (
             (storedAdmin.adminName?.split(" ")[0]?.charAt(0) || "A") +
             (storedAdmin.adminName?.split(" ")[1]?.charAt(0) || "D")
           ).toUpperCase(),
         }));
       }
+
+      // ✅ load avatar if saved
+      if (storedAdmin?.avatar) setAvatarPreview(storedAdmin.avatar);
     } catch (error) {
       console.error("Error parsing admin data:", error);
     }
@@ -126,6 +130,7 @@ const AdminReports = () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       setAvatarPreview(ev.target.result);
+
       const updatedAdmin = { ...adminData, avatar: ev.target.result };
       setAdminData(updatedAdmin);
 
@@ -153,7 +158,7 @@ const AdminReports = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/outpasses", {
+      const res = await fetch(`${API_BASE}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -203,7 +208,7 @@ const AdminReports = () => {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       if (dateRange === "year") return d >= startOfYear;
 
-      return true; // custom not implemented here
+      return true;
     };
 
     return outpasses.filter((op) => {
@@ -255,7 +260,7 @@ const AdminReports = () => {
 
     const dayBuckets = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
-      d.setDate(d.getDate() - (6 - i)); // oldest -> newest
+      d.setDate(d.getDate() - (6 - i));
       return d;
     });
 
@@ -283,7 +288,6 @@ const AdminReports = () => {
     const pendingArr = dayBuckets.map((d) => countForDay(d, "pending"));
     const rejectedArr = dayBuckets.map((d) => countForDay(d, "rejected"));
 
-    // Convert to % heights (your chart uses %)
     const maxVal = Math.max(...approvedArr, ...pendingArr, ...rejectedArr, 1);
     const toPercentArr = (arr) => arr.map((v) => Math.round((v / maxVal) * 100));
 
@@ -306,7 +310,6 @@ const AdminReports = () => {
     });
   }, [filteredOutpasses]);
 
-  /* ===================== GENERATE REPORT (UI) ===================== */
   const handleGenerateReport = () => {
     alert(
       `Generating report with date range: ${dateRange}, status: ${statusFilter}, matches: ${filteredOutpasses.length}`
@@ -316,10 +319,7 @@ const AdminReports = () => {
   /* ===================== CLICK OUTSIDE ===================== */
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
         setShowProfileDropdown(false);
       }
 
@@ -338,29 +338,16 @@ const AdminReports = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen]);
 
-  /* ===================== ✅ DONUT / PIE (FIXED) ===================== */
+  /* ===================== DONUT ===================== */
   const DONUT_RADIUS = 40;
   const DONUT_CIRC = 2 * Math.PI * DONUT_RADIUS;
 
   const donutSegments = [
-    {
-      label: "Approved",
-      value: reportsData.statusBreakdown.approved,
-      color: "#4CAF50",
-    },
-    {
-      label: "Pending",
-      value: reportsData.statusBreakdown.pending,
-      color: "#FF9800",
-    },
-    {
-      label: "Rejected",
-      value: reportsData.statusBreakdown.rejected,
-      color: "#F44336",
-    },
+    { label: "Approved", value: reportsData.statusBreakdown.approved, color: "#4CAF50" },
+    { label: "Pending", value: reportsData.statusBreakdown.pending, color: "#FF9800" },
+    { label: "Rejected", value: reportsData.statusBreakdown.rejected, color: "#F44336" },
   ];
 
-  // normalize to exactly 100 (handles rounding issues)
   const totalPercent = donutSegments.reduce((s, x) => s + (x.value || 0), 0) || 1;
   const normalizedSegments = donutSegments.map((s) => ({
     ...s,
@@ -369,7 +356,7 @@ const AdminReports = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
+      {/* ✅ Header (same as AdminDashboard) */}
       <header className="dashboard-header">
         <Link to="/" className="logo">
           <i className="fas fa-graduation-cap"></i>
@@ -382,12 +369,9 @@ const AdminReports = () => {
           onClick={() => setShowProfileDropdown(!showProfileDropdown)}
         >
           <div className="user-avatar">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt={adminData.name} />
-            ) : (
-              <span>{adminData.initials}</span>
-            )}
+            {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
           </div>
+
           <div className="user-info">
             <h3>{adminData.name}</h3>
             <p>Admin ID: {adminData.id}</p>
@@ -397,11 +381,7 @@ const AdminReports = () => {
             <div className="profile-dropdown active">
               <div className="profile-header">
                 <div className="profile-avatar-large">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={adminData.name} />
-                  ) : (
-                    <span>{adminData.initials}</span>
-                  )}
+                  {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
                 </div>
                 <div className="profile-header-info">
                   <h3>{adminData.name}</h3>
@@ -422,21 +402,24 @@ const AdminReports = () => {
                   <i className="fas fa-user-edit"></i>
                   <span>Edit Profile</span>
                 </a>
-                <a href="#" className="profile-menu-item">
+
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-cog"></i>
                   <span>Settings</span>
                 </a>
-                <a href="#" className="profile-menu-item">
+
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-bell"></i>
                   <span>Notifications</span>
                 </a>
 
                 <div className="profile-divider"></div>
 
-                <a href="#" className="profile-menu-item">
+                <a href="#" className="profile-menu-item" onClick={(e) => e.preventDefault()}>
                   <i className="fas fa-question-circle"></i>
                   <span>Help & Support</span>
                 </a>
+
                 <a
                   href="#"
                   className="profile-menu-item"
@@ -455,28 +438,20 @@ const AdminReports = () => {
       </header>
 
       <div className="dashboard-container-inner">
-        <button
-          className="mobile-sidebar-toggle"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
+        <button className="mobile-sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
           <i className={`fas ${sidebarOpen ? "fa-times" : "fa-bars"}`}></i>
           <span>Menu</span>
         </button>
 
         <div ref={sidebarRef}>
-          <AdminSidebar
-            isMobileOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
+          <AdminSidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
 
         <main className="main-content">
-          {/* Welcome Section */}
           <div className="welcome-section">
             <h1>Manage Reports 📊</h1>
             <p>
-              {greeting}, {adminData.name}. Generate, filter, and analyze out-pass
-              request reports and statistics.
+              {greeting}, {adminData.name}. Generate, filter, and analyze out-pass request reports and statistics.
             </p>
           </div>
 
@@ -540,8 +515,7 @@ const AdminReports = () => {
                 disabled={loading}
                 title="Refresh"
               >
-                <i className={`fas ${loading ? "fa-spinner fa-spin" : "fa-rotate"}`}></i>{" "}
-                Refresh
+                <i className={`fas ${loading ? "fa-spinner fa-spin" : "fa-rotate"}`}></i> Refresh
               </button>
             </div>
           </div>
@@ -625,7 +599,7 @@ const AdminReports = () => {
                         </div>
 
                         <div className="x-axis-label">
-                          {reportsData.requestTrends.labels?.[index] || ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][index]}
+                          {reportsData.requestTrends.labels?.[index] || ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}
                         </div>
                       </div>
                     ))}
@@ -645,7 +619,7 @@ const AdminReports = () => {
               </div>
             </div>
 
-            {/* ✅ FIXED DONUT STATUS DISTRIBUTION */}
+            {/* Donut */}
             <div className="enhanced-chart-card">
               <div className="chart-header">
                 <h3>
@@ -659,25 +633,14 @@ const AdminReports = () => {
               <div className="enhanced-breakdown-chart">
                 <div className="donut-container">
                   <svg className="donut-chart" viewBox="0 0 100 100">
-                    {/* Background ring */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r={DONUT_RADIUS}
-                      fill="none"
-                      stroke="#f0f0f0"
-                      strokeWidth="20"
-                    />
+                    <circle cx="50" cy="50" r={DONUT_RADIUS} fill="none" stroke="#f0f0f0" strokeWidth="20" />
 
-                    {/* Segments (fills full 100%) */}
                     {(() => {
                       let cumulative = 0;
-
                       return normalizedSegments.map((seg) => {
                         const segLength = (seg.pct / 100) * DONUT_CIRC;
                         const dashArray = `${segLength} ${DONUT_CIRC - segLength}`;
                         const dashOffset = -(cumulative / 100) * DONUT_CIRC;
-
                         cumulative += seg.pct;
 
                         return (
@@ -699,10 +662,7 @@ const AdminReports = () => {
                       });
                     })()}
 
-                    {/* ✅ center filled with ONE color (white) */}
                     <circle cx="50" cy="50" r="28" fill="#ffffff" />
-
-                    {/* center text */}
                     <text x="50" y="46" textAnchor="middle" className="donut-center-text">
                       {reportsData.statusBreakdown.approved}%
                     </text>
@@ -743,7 +703,7 @@ const AdminReports = () => {
             </div>
           </div>
 
-          {/* Insights (kept as-is) */}
+          {/* Insights */}
           <div className="insights-section">
             <div className="insight-card">
               <div className="insight-icon">
@@ -778,12 +738,11 @@ const AdminReports = () => {
         </main>
       </div>
 
-      {/* Footer */}
       <footer className="dashboard-footer">
         <p>© 2024 Online Student Out-Pass System. All rights reserved.</p>
       </footer>
 
-      {/* Profile Edit Modal */}
+      {/* ✅ Profile Edit Modal (same as AdminDashboard) */}
       {showProfileModal && (
         <div className="profile-modal-overlay active">
           <div className="profile-modal">
@@ -797,11 +756,7 @@ const AdminReports = () => {
             <div className="modal-content">
               <div className="avatar-edit-section">
                 <div className="avatar-edit">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={adminData.name} />
-                  ) : (
-                    <span>{adminData.initials}</span>
-                  )}
+                  {avatarPreview ? <img src={avatarPreview} alt={adminData.name} /> : <span>{adminData.initials}</span>}
                 </div>
                 <label htmlFor="avatarUpload" className="avatar-change-btn">
                   <i className="fas fa-camera"></i> Change Photo
@@ -815,22 +770,45 @@ const AdminReports = () => {
                 />
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="modal-btn modal-btn-primary"
-                  onClick={() => setShowProfileModal(false)}
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  className="modal-btn modal-btn-secondary"
-                  onClick={() => setShowProfileModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
+              <form>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminName">Full Name</label>
+                    <input type="text" id="adminName" className="form-control" defaultValue={adminData.name} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminEmail">Email</label>
+                    <input type="email" id="adminEmail" className="form-control" defaultValue={adminData.email} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="adminPhone">Phone</label>
+                    <input type="tel" id="adminPhone" className="form-control" defaultValue={adminData.phone} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="adminDepartment">Department</label>
+                    <input type="text" id="adminDepartment" className="form-control" defaultValue={adminData.department} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="adminSection">Section</label>
+                    <input type="text" id="adminSection" className="form-control" defaultValue={adminData.section} readOnly />
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="modal-btn modal-btn-primary" onClick={() => setShowProfileModal(false)}>
+                    Save Changes
+                  </button>
+                  <button type="button" className="modal-btn modal-btn-secondary" onClick={() => setShowProfileModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

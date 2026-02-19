@@ -26,10 +26,13 @@ const SecurityOutpasses = () => {
     initials: "SC",
   });
 
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  // ✅ REMOVED dropdown + profile modal + logout
+  // const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  // const [showProfileModal, setShowProfileModal] = useState(false);
+
   const [avatarPreview, setAvatarPreview] = useState(null);
 
+  // ✅ keep ref (optional, harmless)
   const profileDropdownRef = useRef(null);
 
   const getInitialsFromTwoWords = (fullName = "Security") => {
@@ -90,19 +93,12 @@ const SecurityOutpasses = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ===================== CLICK OUTSIDE (dropdown + mobile sidebar) ===================== */
+  /* ===================== CLICK OUTSIDE (mobile sidebar only) ===================== */
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
-        setShowProfileDropdown(false);
-      }
-
       if (
         window.innerWidth <= 768 &&
         sidebarOpen &&
@@ -118,51 +114,11 @@ const SecurityOutpasses = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sidebarOpen]);
 
-  /* ===================== LOGOUT ===================== */
-  const handleLogout = () => {
-    if (!window.confirm("Are you sure you want to logout?")) return;
-    clearAndRedirect();
-  };
-
-  /* ===================== AVATAR ===================== */
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = ev.target.result;
-      setAvatarPreview(img);
-
-      const stored = JSON.parse(
-        localStorage.getItem("securityUser") ||
-          sessionStorage.getItem("securityUser") ||
-          "{}"
-      );
-      const updatedUser = { ...stored, avatar: img };
-
-      localStorage.setItem("securityUser", JSON.stringify(updatedUser));
-      sessionStorage.setItem("securityUser", JSON.stringify(updatedUser));
-    };
-    reader.readAsDataURL(file);
-  };
-
   /* ===================== OUTPASSES STATE (DB) ===================== */
   const [query, setQuery] = useState("");
   const [outStatusFilter, setOutStatusFilter] = useState("ALL"); // Pending/Approved
   const [outpasses, setOutpasses] = useState([]);
   const [selected, setSelected] = useState(null);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const d = new Date(dateString);
-    if (Number.isNaN(d.getTime())) return "N/A";
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A";
@@ -187,7 +143,6 @@ const SecurityOutpasses = () => {
     return { className: "status-pending", displayText: "Pending" };
   };
 
-  // ✅ Out status based on DB field `outStatus` (default Pending)
   const getOutStatusInfo = (row) => {
     const s = String(row?.outStatus || "Pending").toLowerCase();
     if (s === "approved") {
@@ -201,8 +156,6 @@ const SecurityOutpasses = () => {
     if (!token) return;
 
     try {
-      // ✅ You need backend endpoint that returns ALL approved outpasses
-      // Example: GET /api/guard/outpasses?status=Approved
       const res = await fetch(
         `${API_BASE}${SECURITY_API_PREFIX}/outpasses?status=Approved`,
         {
@@ -225,9 +178,10 @@ const SecurityOutpasses = () => {
       }
 
       const list = Array.isArray(data.outpasses) ? data.outpasses : [];
-
-      // ✅ normalize outStatus for old records
-      const fixed = list.map((x) => ({ ...x, outStatus: x.outStatus || "Pending" }));
+      const fixed = list.map((x) => ({
+        ...x,
+        outStatus: x.outStatus || "Pending",
+      }));
 
       setOutpasses(fixed);
     } catch (err) {
@@ -244,7 +198,6 @@ const SecurityOutpasses = () => {
     const q = query.trim().toLowerCase();
 
     return outpasses.filter((x) => {
-      // ✅ only approved list already, but keep safe
       const approval = String(x.status || "").toLowerCase();
       if (approval !== "approved") return false;
 
@@ -320,11 +273,8 @@ const SecurityOutpasses = () => {
           Online Student Out-Pass System
         </Link>
 
-        <div
-          className="user-profile"
-          ref={profileDropdownRef}
-          onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-        >
+        {/* ✅ Profile display-only (same as SecurityDashboard.jsx) */}
+        <div className="user-profile" ref={profileDropdownRef}>
           <div className="user-avatar">
             {avatarPreview ? (
               <img src={avatarPreview} alt={securityData.name} />
@@ -337,56 +287,6 @@ const SecurityOutpasses = () => {
             <h3>{securityData.name}</h3>
             <p>Security ID: {securityData.id}</p>
           </div>
-
-          {showProfileDropdown && (
-            <div
-              className="profile-dropdown active"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="profile-header">
-                <div className="profile-avatar-large">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={securityData.name} />
-                  ) : (
-                    <span>{securityData.initials}</span>
-                  )}
-                </div>
-                <div className="profile-header-info">
-                  <h3>{securityData.name}</h3>
-                  <p>Security ID: {securityData.id}</p>
-                </div>
-              </div>
-
-              <div className="profile-menu">
-                <a
-                  href="#"
-                  className="profile-menu-item"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowProfileModal(true);
-                    setShowProfileDropdown(false);
-                  }}
-                >
-                  <i className="fas fa-user-edit"></i>
-                  <span>Edit Profile</span>
-                </a>
-
-                <div className="profile-divider"></div>
-
-                <a
-                  href="#"
-                  className="profile-menu-item"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleLogout();
-                  }}
-                >
-                  <i className="fas fa-sign-out-alt"></i>
-                  <span>Logout</span>
-                </a>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
@@ -471,7 +371,9 @@ const SecurityOutpasses = () => {
                   <strong>
                     {
                       filtered.filter(
-                        (x) => String(x.outStatus || "Pending").toLowerCase() === "pending"
+                        (x) =>
+                          String(x.outStatus || "Pending").toLowerCase() ===
+                          "pending"
                       ).length
                     }
                   </strong>
@@ -481,7 +383,8 @@ const SecurityOutpasses = () => {
                   <strong>
                     {
                       filtered.filter(
-                        (x) => String(x.outStatus || "").toLowerCase() === "approved"
+                        (x) =>
+                          String(x.outStatus || "").toLowerCase() === "approved"
                       ).length
                     }
                   </strong>
@@ -514,7 +417,10 @@ const SecurityOutpasses = () => {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: "center", padding: 16 }}>
+                      <td
+                        colSpan="6"
+                        style={{ textAlign: "center", padding: 16 }}
+                      >
                         No records found
                       </td>
                     </tr>
@@ -525,7 +431,8 @@ const SecurityOutpasses = () => {
 
                       const name = x.fullName || x.studentName || "N/A";
                       const roll = x.rollNumber || x.rollNo || "-";
-                      const approvedAt = x.approvedAt || x.outDate || x.appliedAt || null;
+                      const approvedAt =
+                        x.approvedAt || x.outDate || x.appliedAt || null;
                       const purpose = x.reasonType || x.purpose || "-";
 
                       return (
@@ -579,9 +486,12 @@ const SecurityOutpasses = () => {
         <p>© 2024 Online Student Out-Pass System. All rights reserved.</p>
       </footer>
 
-      {/* ✅ Details Modal (click row) */}
+      {/* ✅ Details Modal (UNCHANGED) */}
       {selected && (
-        <div className="profile-modal-overlay active" onClick={() => setSelected(null)}>
+        <div
+          className="profile-modal-overlay active"
+          onClick={() => setSelected(null)}
+        >
           <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Outpass Details</h2>
@@ -592,39 +502,72 @@ const SecurityOutpasses = () => {
 
             <div className="modal-content">
               <div style={{ display: "grid", gap: 10 }}>
-                <div><strong>Name:</strong> {selected.fullName || selected.studentName || "N/A"}</div>
-                <div><strong>Roll Number:</strong> {selected.rollNumber || selected.rollNo || "N/A"}</div>
-                <div><strong>Department:</strong> {selected.department || "N/A"}</div>
-                <div><strong>Year:</strong> {selected.year || "N/A"}</div>
-                <div><strong>Section:</strong> {selected.section || "N/A"}</div>
+                <div>
+                  <strong>Name:</strong>{" "}
+                  {selected.fullName || selected.studentName || "N/A"}
+                </div>
+                <div>
+                  <strong>Roll Number:</strong>{" "}
+                  {selected.rollNumber || selected.rollNo || "N/A"}
+                </div>
+                <div>
+                  <strong>Department:</strong> {selected.department || "N/A"}
+                </div>
+                <div>
+                  <strong>Year:</strong> {selected.year || "N/A"}
+                </div>
+                <div>
+                  <strong>Section:</strong> {selected.section || "N/A"}
+                </div>
 
-                <div><strong>Reason Type:</strong> {selected.reasonType || "N/A"}</div>
-                <div><strong>Reason:</strong> {selected.reason || "N/A"}</div>
-                <div><strong>Contact:</strong> {selected.contactNumber || "N/A"}</div>
-                <div><strong>Email:</strong> {selected.studentEmail || "N/A"}</div>
+                <div>
+                  <strong>Reason Type:</strong> {selected.reasonType || "N/A"}
+                </div>
+                <div>
+                  <strong>Reason:</strong> {selected.reason || "N/A"}
+                </div>
+                <div>
+                  <strong>Contact:</strong>{" "}
+                  {selected.contactNumber || "N/A"}
+                </div>
+                <div>
+                  <strong>Email:</strong> {selected.studentEmail || "N/A"}
+                </div>
 
                 <hr />
 
                 <div>
                   <strong>Approval Status:</strong>{" "}
-                  <span className={`status ${getApprovalStatusInfo(selected).className}`}>
+                  <span
+                    className={`status ${
+                      getApprovalStatusInfo(selected).className
+                    }`}
+                  >
                     {getApprovalStatusInfo(selected).displayText}
                   </span>
                 </div>
-                <div><strong>Applied At:</strong> {formatDateTime(selected.appliedAt)}</div>
-                <div><strong>Approved At:</strong> {formatDateTime(selected.approvedAt)}</div>
-                <div><strong>Approved By:</strong> {selected.approvedBy || "N/A"}</div>
+                <div>
+                  <strong>Applied At:</strong> {formatDateTime(selected.appliedAt)}
+                </div>
+                <div>
+                  <strong>Approved At:</strong>{" "}
+                  {formatDateTime(selected.approvedAt)}
+                </div>
+                <div>
+                  <strong>Approved By:</strong> {selected.approvedBy || "N/A"}
+                </div>
 
                 <hr />
 
                 <div>
                   <strong>Out Status:</strong>{" "}
-                  <span className={`status ${getOutStatusInfo(selected).className}`}>
+                  <span
+                    className={`status ${getOutStatusInfo(selected).className}`}
+                  >
                     {getOutStatusInfo(selected).displayText}
                   </span>
                 </div>
 
-                {/* ✅ OPTIONAL: if you want button to update outStatus */}
                 {String(selected.outStatus || "Pending") !== "Approved" && (
                   <button
                     className="modal-btn modal-btn-primary"
@@ -637,102 +580,6 @@ const SecurityOutpasses = () => {
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✅ Profile Modal */}
-      {showProfileModal && (
-        <div className="profile-modal-overlay active">
-          <div className="profile-modal">
-            <div className="modal-header">
-              <h2>Edit Security Profile</h2>
-              <button
-                className="close-modal"
-                onClick={() => setShowProfileModal(false)}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="modal-content">
-              <div className="avatar-edit-section">
-                <div className="avatar-edit">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt={securityData.name} />
-                  ) : (
-                    <span>{securityData.initials}</span>
-                  )}
-                </div>
-
-                <label htmlFor="avatarUpload" className="avatar-change-btn">
-                  <i className="fas fa-camera"></i> Change Photo
-                </label>
-
-                <input
-                  type="file"
-                  id="avatarUpload"
-                  className="avatar-upload"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                />
-              </div>
-
-              <form>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="secName">Full Name</label>
-                    <input
-                      type="text"
-                      id="secName"
-                      className="form-control"
-                      defaultValue={securityData.name}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="secEmail">Email</label>
-                    <input
-                      type="email"
-                      id="secEmail"
-                      className="form-control"
-                      defaultValue={securityData.email}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="secPhone">Phone</label>
-                    <input
-                      type="tel"
-                      id="secPhone"
-                      className="form-control"
-                      defaultValue={securityData.phone}
-                    />
-                  </div>
-                </div>
-
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="modal-btn modal-btn-primary"
-                    onClick={() => setShowProfileModal(false)}
-                  >
-                    Save Changes
-                  </button>
-
-                  <button
-                    type="button"
-                    className="modal-btn modal-btn-secondary"
-                    onClick={() => setShowProfileModal(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>

@@ -12,14 +12,15 @@ const API_BASE = "http://localhost:5000";
 const ViewHistory = () => {
   const navigate = useNavigate();
 
+  // ✅ SAME user shape as ApplyPass.jsx
   const [user, setUser] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    studentId: "123456",
+    firstName: "",
+    lastName: "",
+    studentId: "",
     email: "",
     phone: "",
     department: "",
-    year: "",
+    yearSemester: "", // ✅
     section: "",
     initials: "JD",
   });
@@ -70,8 +71,32 @@ const ViewHistory = () => {
     navigate("/student-login");
   };
 
+  // ✅ SAME hydrateFromUser as ApplyPass.jsx
+  const hydrateFromUser = (u) => {
+    const updatedUser = {
+      firstName: u?.firstName || "",
+      lastName: u?.lastName || "",
+      studentId: u?.studentId || "",
+      email: u?.email || "",
+      phone: u?.phone || "",
+      department: u?.department || "",
+      yearSemester: u?.yearSemester || "",
+      section: u?.section || "",
+      initials:
+        u?.initials ||
+        ((u?.firstName?.charAt(0) || "J") + (u?.lastName?.charAt(0) || "D")).toUpperCase(),
+    };
+
+    setUser(updatedUser);
+
+    // Restore avatar
+    const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
+    if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
+  };
+
   useEffect(() => {
     checkAuthentication();
+    loadUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -95,65 +120,56 @@ const ViewHistory = () => {
 
   const checkAuthentication = async () => {
     const token = getToken();
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
+    if (!token) return navigate("/student-login");
 
     try {
       const response = await fetch(`${API_BASE}/api/students/check-auth`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
       const data = await response.json();
-
-      if (!data.success || !data.isAuthenticated) {
-        clearStorageAndRedirect();
-        return;
-      }
+      if (!data.success || !data.isAuthenticated) return clearStorageAndRedirect();
 
       if (data.user) {
-        const updatedUser = {
-          firstName: data.user.firstName || user.firstName,
-          lastName: data.user.lastName || user.lastName,
-          studentId: data.user.studentId || user.studentId,
-          email: data.user.email || "",
-          phone: data.user.phone || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          initials:
-            data.user.initials ||
-            ((data.user.firstName?.charAt(0) || "J") + (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-        };
+        hydrateFromUser(data.user);
 
-        setUser(updatedUser);
-
-        const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-        if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
+        // ✅ keep storage synced
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       }
     } catch (error) {
-      console.error("Authentication error:", error);
-
       const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-      if (storedUser.firstName && storedUser.studentId) {
-        setUser((prev) => ({
-          ...prev,
-          ...storedUser,
-          initials: ((storedUser.firstName?.charAt(0) || "J") + (storedUser.lastName?.charAt(0) || "D")).toUpperCase(),
-        }));
-        if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
-      } else {
-        clearStorageAndRedirect();
-      }
+      if (storedUser?.studentId) hydrateFromUser(storedUser);
+      else clearStorageAndRedirect();
     }
   };
 
-  /* ================= PROFILE ================= */
+  const loadUserData = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/students/profile`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
+
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  /* ================= PROFILE (SAME AS ApplyPass) ================= */
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,17 +196,14 @@ const ViewHistory = () => {
     setUser((prev) => ({ ...prev, initials }));
   };
 
+  // ✅ ONLY phone + yearSemester (same as ApplyPass.jsx)
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-
     const fd = new FormData(e.target);
+
     const updatedData = {
-      firstName: fd.get("firstName"),
-      lastName: fd.get("lastName"),
       phone: fd.get("phone"),
-      department: fd.get("department"),
-      year: fd.get("year"),
-      section: fd.get("section"),
+      yearSemester: fd.get("yearSemester"),
     };
 
     const token = getToken();
@@ -208,18 +221,11 @@ const ViewHistory = () => {
 
       const data = await response.json();
 
-      if (data.success) {
-        const updatedUser = {
-          ...user,
-          ...updatedData,
-          initials: ((updatedData.firstName || "J").charAt(0) + (updatedData.lastName || "D").charAt(0)).toUpperCase(),
-        };
-        setUser(updatedUser);
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
 
-        localStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        localStorage.setItem("token", data.token || token);
-        sessionStorage.setItem("user", JSON.stringify(data.user || updatedUser));
-        sessionStorage.setItem("token", data.token || token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
 
         alert("Profile updated successfully!");
         setShowProfileModal(false);
@@ -227,7 +233,6 @@ const ViewHistory = () => {
         alert("Failed to update profile: " + (data.message || "Unknown error"));
       }
     } catch (error) {
-      console.error("Update profile error:", error);
       alert("Error updating profile. Please try again.");
     }
   };
@@ -244,19 +249,16 @@ const ViewHistory = () => {
         });
       }
     } catch (error) {
-      console.error("Logout error:", error);
+      // ignore
     } finally {
       clearStorageAndRedirect();
     }
   };
 
-  /* ================= LOAD HISTORY ================= */
+  /* ================= LOAD HISTORY (UNCHANGED LOGIC) ================= */
   const loadOutpassHistory = async () => {
     const token = getToken();
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
+    if (!token) return navigate("/student-login");
 
     try {
       const response = await fetch(`${API_BASE}/api/outpass/history`, {
@@ -270,7 +272,6 @@ const ViewHistory = () => {
         const formattedData = data.outpasses.map((pass) => {
           const status = (pass.status || "pending").toLowerCase();
 
-          // decision fields
           const decisionBy =
             pass.decisionBy ||
             (status === "approved" ? pass.approvedBy : null) ||
@@ -300,6 +301,8 @@ const ViewHistory = () => {
 
             decisionBy,
             decisionAt,
+
+            adminNotes: pass.adminNotes || "",
           };
         });
 
@@ -310,7 +313,6 @@ const ViewHistory = () => {
         calculateStats([]);
       }
     } catch (error) {
-      console.error("Error loading history:", error);
       setHistoryData([]);
       calculateStats([]);
     }
@@ -498,7 +500,6 @@ const ViewHistory = () => {
             </div>
           </div>
 
-          {/* History Table */}
           <div className="history-section">
             <div className="section-header">
               <h2>
@@ -556,7 +557,9 @@ const ViewHistory = () => {
                         <td>{item.purpose}</td>
                         <td>{formatDate(item.appliedDate)}</td>
                         <td>
-                          <span className={`status ${getStatusClass(item.status)}`}>{getStatusText(item.status)}</span>
+                          <span className={`status ${getStatusClass(item.status)}`}>
+                            {getStatusText(item.status)}
+                          </span>
                         </td>
                         <td>{item.decisionBy || "-"}</td>
                       </tr>
@@ -576,7 +579,6 @@ const ViewHistory = () => {
             </div>
           </div>
 
-          {/* Export Options */}
           <div className="export-section">
             <div className="section-header">
               <h2>
@@ -610,7 +612,6 @@ const ViewHistory = () => {
         </main>
       </div>
 
-      {/* DETAILS MODAL */}
       {selectedRecord && (
         <div className="outpass-modal-overlay" onClick={() => setSelectedRecord(null)}>
           <div className="outpass-modal" onClick={(e) => e.stopPropagation()}>
@@ -665,8 +666,17 @@ const ViewHistory = () => {
 
                 <div className="detail-card">
                   <span className="detail-label">{getDecisionLabel(selectedRecord.status)} Date</span>
-                  <span className="detail-value">{selectedRecord.decisionAt ? formatDate(selectedRecord.decisionAt) : "-"}</span>
+                  <span className="detail-value">
+                    {selectedRecord.decisionAt ? formatDate(selectedRecord.decisionAt) : "-"}
+                  </span>
                 </div>
+
+                {String(selectedRecord.status).toLowerCase() === "rejected" && (
+                  <div className="detail-card" style={{ gridColumn: "1 / -1" }}>
+                    <span className="detail-label">Rejection Reason</span>
+                    <span className="detail-value">{selectedRecord.adminNotes?.trim() ? selectedRecord.adminNotes : "-"}</span>
+                  </div>
+                )}
               </div>
             </div>
 

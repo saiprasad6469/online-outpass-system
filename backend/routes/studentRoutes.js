@@ -68,26 +68,31 @@ router.get("/profile", authMiddleware, async (req, res) => {
 /* ApplyPass.jsx calls: /api/students/update-profile */
 router.put("/update-profile", authMiddleware, async (req, res) => {
   try {
-    const { firstName, lastName, phone, department, year, section } = req.body;
+    const { phone, yearSemester } = req.body;
 
-    const updatedStudent = await Student.findByIdAndUpdate(
+    const update = {};
+    if (phone) update.phone = phone;
+    if (yearSemester) update.yearSemester = yearSemester;
+
+    // ✅ Do NOT allow these to be updated:
+    // firstName, lastName, studentId, department, section
+
+    const user = await Student.findByIdAndUpdate(
       req.user.id,
-      { firstName, lastName, phone, department, year, section },
+      { $set: update },
       { new: true }
     ).select("-password");
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Profile updated successfully",
-      user: updatedStudent,
+      message: "Profile updated",
+      user,
     });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 
 /* ================= LOGOUT ================= */
 router.post("/logout", authMiddleware, (req, res) => {

@@ -12,13 +12,14 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    studentId: "123456",
-    email: "john.doe@student.edu",
-    phone: "+1 (555) 123-4567",
-    department: "Computer Science",
-    year: "2",
+    firstName: "",
+    lastName: "",
+    studentId: "",
+    email: "",
+    phone: "",
+    department: "",
+    yearSemester: "", // ✅ keep same as ApplyPass
+    section: "",
     initials: "JD",
   });
 
@@ -47,9 +48,47 @@ const StudentDashboard = () => {
 
   const avatarUploadRef = useRef(null);
 
+  const getToken = () =>
+    localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  const clearStorageAndRedirect = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    navigate("/student-login");
+  };
+
+  // ✅ Same helper used in ApplyPass (keeps everything consistent)
+  const hydrateFromUser = (u) => {
+    const updatedUser = {
+      firstName: u?.firstName || "",
+      lastName: u?.lastName || "",
+      studentId: u?.studentId || "",
+      email: u?.email || "",
+      phone: u?.phone || "",
+      department: u?.department || "",
+      yearSemester: u?.yearSemester || u?.year || "", // ✅ support both shapes
+      section: u?.section || "",
+      initials:
+        u?.initials ||
+        (
+          (u?.firstName?.charAt(0) || "J") +
+          (u?.lastName?.charAt(0) || "D")
+        ).toUpperCase(),
+      avatar: u?.avatar,
+    };
+
+    setUser((prev) => ({ ...prev, ...updatedUser }));
+
+    // ✅ avatar from storage/user
+    if (updatedUser.avatar) setAvatarPreview(updatedUser.avatar);
+  };
+
   /* ================= AUTH + GREETING ================= */
   useEffect(() => {
     checkAuthentication();
+    loadUserData(); // ✅ same as ApplyPass (profile endpoint)
     updateGreeting();
 
     const intervalId = setInterval(updateGreeting, 60000);
@@ -62,20 +101,8 @@ const StudentDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.studentId]);
 
-  const getToken = () =>
-    localStorage.getItem("token") || sessionStorage.getItem("token");
-
-  const clearStorageAndRedirect = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
-    navigate("/student-login");
-  };
-
   const checkAuthentication = async () => {
     const token = getToken();
-
     if (!token) {
       navigate("/student-login");
       return;
@@ -98,44 +125,61 @@ const StudentDashboard = () => {
       }
 
       if (data.user) {
-        const updatedUser = {
-          ...user,
-          firstName: data.user.firstName || user.firstName,
-          lastName: data.user.lastName || user.lastName,
-          studentId: data.user.studentId || user.studentId,
-          email: data.user.email || user.email,
-          phone: data.user.phone || user.phone,
-          department: data.user.department || user.department,
-          year: data.user.year || user.year,
-          initials:
-            data.user.initials ||
-            (
-              (data.user.firstName?.charAt(0) || "J") +
-              (data.user.lastName?.charAt(0) || "D")
-            ).toUpperCase(),
-        };
-        setUser(updatedUser);
+        hydrateFromUser(data.user);
+
+        // ✅ sync storage
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       }
     } catch (error) {
       console.error("Authentication error:", error);
 
+      // ✅ fallback to stored user (same pattern as ApplyPass)
       const storedUser = JSON.parse(
         localStorage.getItem("user") ||
           sessionStorage.getItem("user") ||
           "{}"
       );
-      if (storedUser.firstName && storedUser.studentId) {
-        setUser((prev) => ({
-          ...prev,
-          ...storedUser,
-          initials: (
-            (storedUser.firstName?.charAt(0) || "J") +
-            (storedUser.lastName?.charAt(0) || "D")
-          ).toUpperCase(),
-        }));
+
+      if (storedUser?.studentId) hydrateFromUser(storedUser);
+      else clearStorageAndRedirect();
+    }
+  };
+
+  // ✅ same as ApplyPass: fetch profile endpoint
+  const loadUserData = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/students/profile`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
+
+        // ✅ sync storage
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       } else {
-        clearStorageAndRedirect();
+        // fallback storage avatar if any
+        const storedUser = JSON.parse(
+          localStorage.getItem("user") ||
+            sessionStorage.getItem("user") ||
+            "{}"
+        );
+        if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
       }
+    } catch {
+      // ignore
     }
   };
 
@@ -153,8 +197,8 @@ const StudentDashboard = () => {
 
     setLoading(true);
     try {
-      await loadOutpassHistory(token); // loads latest 3 in state
-      await calculateStatsFromOutpasses(); // calculates counts using full history
+      await loadOutpassHistory(token); // latest 3
+      await calculateStatsFromOutpasses(); // full stats
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       setDemoData();
@@ -174,7 +218,6 @@ const StudentDashboard = () => {
     });
 
     const data = await response.json();
-    console.log("OUTPASS HISTORY RESPONSE:", data);
 
     if (response.ok && data.success && Array.isArray(data.outpasses)) {
       const formattedOutpasses = data.outpasses.map((pass) => {
@@ -197,9 +240,7 @@ const StudentDashboard = () => {
       });
 
       const latest3 = formattedOutpasses
-        .sort(
-          (a, b) => new Date(b.appliedDate || 0) - new Date(a.appliedDate || 0)
-        )
+        .sort((a, b) => new Date(b.appliedDate || 0) - new Date(a.appliedDate || 0))
         .slice(0, 3);
 
       setOutpasses(latest3);
@@ -227,15 +268,9 @@ const StudentDashboard = () => {
       if (data.success && Array.isArray(data.outpasses)) {
         const all = data.outpasses;
 
-        const pending = all.filter(
-          (p) => (p.status || "").toLowerCase() === "pending"
-        ).length;
-        const approved = all.filter(
-          (p) => (p.status || "").toLowerCase() === "approved"
-        ).length;
-        const rejected = all.filter(
-          (p) => (p.status || "").toLowerCase() === "rejected"
-        ).length;
+        const pending = all.filter((p) => (p.status || "").toLowerCase() === "pending").length;
+        const approved = all.filter((p) => (p.status || "").toLowerCase() === "approved").length;
+        const rejected = all.filter((p) => (p.status || "").toLowerCase() === "rejected").length;
 
         setStats((prev) => ({
           ...prev,
@@ -344,6 +379,7 @@ const StudentDashboard = () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       setAvatarPreview(ev.target.result);
+
       const updatedUser = { ...user, avatar: ev.target.result };
       setUser(updatedUser);
 
@@ -356,16 +392,14 @@ const StudentDashboard = () => {
     reader.readAsDataURL(file);
   };
 
+  // ✅ Make profile update same style as ApplyPass (phone + yearSemester)
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(e.target);
+    const fd = new FormData(e.target);
     const updatedData = {
-      firstName: formData.get("firstName"),
-      lastName: formData.get("lastName"),
-      phone: formData.get("phone"),
-      department: formData.get("department"),
-      year: formData.get("year"),
+      phone: fd.get("phone"),
+      yearSemester: fd.get("yearSemester"),
     };
 
     const token = getToken();
@@ -386,19 +420,12 @@ const StudentDashboard = () => {
 
       const data = await response.json();
 
-      if (data.success) {
-        const updatedUser = {
-          ...user,
-          ...updatedData,
-          initials: (
-            updatedData.firstName.charAt(0) + updatedData.lastName.charAt(0)
-          ).toUpperCase(),
-        };
-        setUser(updatedUser);
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
 
-        localStorage.setItem("user", JSON.stringify(data.user || updatedUser));
+        localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("token", data.token || token);
-        sessionStorage.setItem("user", JSON.stringify(data.user || updatedUser));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
         sessionStorage.setItem("token", data.token || token);
 
         alert("Profile updated successfully!");
@@ -432,7 +459,7 @@ const StudentDashboard = () => {
 
   const updateInitials = () => {
     const initials = (
-      user.firstName.charAt(0) + user.lastName.charAt(0)
+      (user.firstName || "J").charAt(0) + (user.lastName || "D").charAt(0)
     ).toUpperCase();
     setUser((prev) => ({ ...prev, initials }));
   };
@@ -545,9 +572,16 @@ const StudentDashboard = () => {
                   ) : outpasses.length === 0 ? (
                     <tr>
                       <td colSpan="5" style={{ textAlign: "center", padding: "30px", color: "#666" }}>
-                        <i className="fas fa-inbox" style={{ fontSize: "40px", marginBottom: "10px", display: "block", opacity: 0.5 }}></i>
+                        <i
+                          className="fas fa-inbox"
+                          style={{ fontSize: "40px", marginBottom: "10px", display: "block", opacity: 0.5 }}
+                        ></i>
                         <p>No out-pass applications found</p>
-                        <Link to="/applypass" className="btn btn-primary" style={{ marginTop: "10px", padding: "8px 16px", fontSize: "14px" }}>
+                        <Link
+                          to="/applypass"
+                          className="btn btn-primary"
+                          style={{ marginTop: "10px", padding: "8px 16px", fontSize: "14px" }}
+                        >
                           Apply for your first out-pass
                         </Link>
                       </td>
@@ -555,7 +589,8 @@ const StudentDashboard = () => {
                   ) : (
                     outpasses.map((outpass) => {
                       const statusInfo = getStatusInfo(outpass.status);
-                      const isDecided = outpass.status === "approved" || outpass.status === "rejected";
+                      const isDecided =
+                        outpass.status === "approved" || outpass.status === "rejected";
 
                       return (
                         <tr key={outpass.id}>

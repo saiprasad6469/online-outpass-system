@@ -12,6 +12,7 @@ const API_BASE = "http://localhost:5000";
 const ContactSupport = () => {
   const navigate = useNavigate();
 
+  // ✅ SAME user shape as ApplyPass.jsx
   const [user, setUser] = useState({
     firstName: "",
     lastName: "",
@@ -19,7 +20,8 @@ const ContactSupport = () => {
     email: "",
     phone: "",
     department: "",
-    year: "",
+    yearSemester: "", // ✅
+    section: "",
     initials: "JD",
   });
 
@@ -75,21 +77,13 @@ const ContactSupport = () => {
       id: 1,
       icon: "fas fa-phone",
       title: "Phone Support",
-      details: [
-        "+1 (555) 987-6543",
-        "Mon-Fri: 9:00 AM - 6:00 PM",
-        "Sat-Sun: 10:00 AM - 4:00 PM",
-      ],
+      details: ["+1 (555) 987-6543", "Mon-Fri: 9:00 AM - 6:00 PM", "Sat-Sun: 10:00 AM - 4:00 PM"],
     },
     {
       id: 2,
       icon: "fas fa-envelope",
       title: "Email Support",
-      details: [
-        "support@outpass.edu",
-        "Response time: Within 24 hours",
-        "Emergency: emergency@outpass.edu",
-      ],
+      details: ["support@outpass.edu", "Response time: Within 24 hours", "Emergency: emergency@outpass.edu"],
     },
     {
       id: 3,
@@ -118,11 +112,7 @@ const ContactSupport = () => {
     }, 6000);
   };
 
-  /* ===================== AUTH ===================== */
-  useEffect(() => {
-    checkAuthentication();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const getToken = () => localStorage.getItem("token") || sessionStorage.getItem("token");
 
   const clearStorageAndRedirect = () => {
     localStorage.removeItem("token");
@@ -132,84 +122,96 @@ const ContactSupport = () => {
     navigate("/student-login");
   };
 
+  // ✅ SAME hydrateFromUser as ApplyPass.jsx
+  const hydrateFromUser = (u) => {
+    const updatedUser = {
+      firstName: u?.firstName || "",
+      lastName: u?.lastName || "",
+      studentId: u?.studentId || "",
+      email: u?.email || "",
+      phone: u?.phone || "",
+      department: u?.department || "",
+      yearSemester: u?.yearSemester || "",
+      section: u?.section || "",
+      initials:
+        u?.initials ||
+        ((u?.firstName?.charAt(0) || "J") + (u?.lastName?.charAt(0) || "D")).toUpperCase(),
+    };
+
+    setUser(updatedUser);
+
+    // Prefill support form with locked details
+    setFormData((prev) => ({
+      ...prev,
+      name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
+      email: updatedUser.email || "",
+      studentId: updatedUser.studentId || "",
+    }));
+
+    // Restore avatar if stored
+    const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
+    if (storedUser?.avatar) setAvatarPreview(storedUser.avatar);
+  };
+
+  /* ===================== AUTH ===================== */
+  useEffect(() => {
+    checkAuthentication();
+    loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const checkAuthentication = async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
+    const token = getToken();
+    if (!token) return navigate("/student-login");
 
     try {
       const response = await fetch(`${API_BASE}/api/students/check-auth`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
 
-      const text = await response.text();
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { success: false, isAuthenticated: false };
-      }
-
-      if (!data.success || !data.isAuthenticated) {
-        clearStorageAndRedirect();
-        return;
-      }
+      const data = await response.json();
+      if (!data.success || !data.isAuthenticated) return clearStorageAndRedirect();
 
       if (data.user) {
-        const updatedUser = {
-          firstName: data.user.firstName || "",
-          lastName: data.user.lastName || "",
-          studentId: data.user.studentId || "",
-          email: data.user.email || "",
-          phone: data.user.phone || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          initials:
-            ((data.user.firstName?.charAt(0) || "J") +
-              (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-        };
-        setUser(updatedUser);
+        hydrateFromUser(data.user);
 
-        setFormData((prev) => ({
-          ...prev,
-          name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
-          email: updatedUser.email || "",
-          studentId: updatedUser.studentId || "",
-        }));
+        // ✅ keep storage synced
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
       }
     } catch (err) {
-      console.error("Auth error:", err);
-
-      const storedUser = JSON.parse(
-        localStorage.getItem("user") || sessionStorage.getItem("user") || "{}"
-      );
-
-      if (storedUser.firstName && storedUser.studentId) {
-        const initials =
-          ((storedUser.firstName?.charAt(0) || "J") +
-            (storedUser.lastName?.charAt(0) || "D")).toUpperCase();
-
-        setUser({ ...storedUser, initials });
-
-        setFormData((prev) => ({
-          ...prev,
-          name: `${storedUser.firstName || ""} ${storedUser.lastName || ""}`.trim(),
-          email: storedUser.email || "",
-          studentId: storedUser.studentId || "",
-        }));
-      } else {
-        clearStorageAndRedirect();
-      }
+      const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
+      if (storedUser?.studentId) hydrateFromUser(storedUser);
+      else clearStorageAndRedirect();
     }
   };
 
-  /* ===================== PROFILE ===================== */
+  const loadUserData = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/students/profile`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
+
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  /* ===================== PROFILE (SAME AS ApplyPass) ===================== */
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -221,7 +223,7 @@ const ContactSupport = () => {
       const updatedUser = { ...user, avatar: ev.target.result };
       setUser(updatedUser);
 
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const token = getToken();
       if (token) {
         localStorage.setItem("user", JSON.stringify(updatedUser));
         sessionStorage.setItem("user", JSON.stringify(updatedUser));
@@ -231,19 +233,61 @@ const ContactSupport = () => {
   };
 
   const updateInitials = () => {
-    const initials =
-      ((user.firstName?.charAt(0) || "J") + (user.lastName?.charAt(0) || "D")).toUpperCase();
+    const initials = ((user.firstName || "J").charAt(0) + (user.lastName || "D").charAt(0)).toUpperCase();
     setUser((prev) => ({ ...prev, initials }));
   };
 
+  // ✅ ONLY phone + yearSemester (same as ApplyPass.jsx)
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-    showNotification("success", "Profile saved (demo).");
-    setShowProfileModal(false);
+    const fd = new FormData(e.target);
+
+    const updatedData = {
+      phone: fd.get("phone"),
+      yearSemester: fd.get("yearSemester"),
+    };
+
+    const token = getToken();
+    if (!token) return showNotification("error", "You need to be logged in to update profile");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/students/update-profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updatedData),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        hydrateFromUser(data.user);
+
+        localStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+
+        showNotification("success", "Profile updated successfully!");
+        setShowProfileModal(false);
+      } else {
+        showNotification("error", data.message || "Failed to update profile");
+      }
+    } catch (error) {
+      showNotification("error", "Error updating profile. Please try again.");
+    }
   };
 
   const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
+    if (!window.confirm("Are you sure you want to logout?")) return;
+    try {
+      const token = getToken();
+      if (token) {
+        await fetch(`${API_BASE}/api/students/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch (e) {
+      // ignore
+    } finally {
       clearStorageAndRedirect();
     }
   };
@@ -258,12 +302,10 @@ const ContactSupport = () => {
     setActiveFaqs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // ✅ IMPORTANT: updated here (this is where you asked)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (sending) return;
 
-    // validations
     if (!formData.name.trim()) return showNotification("error", "Please enter your name");
     if (!formData.email.trim()) return showNotification("error", "Please enter your email");
     if (!formData.studentId.trim()) return showNotification("error", "Please enter your student ID");
@@ -288,7 +330,6 @@ const ContactSupport = () => {
         }),
       });
 
-      // ✅ Robust parsing (works even when backend returns HTML on 500)
       const text = await res.text();
       let data = {};
       try {
@@ -302,10 +343,7 @@ const ContactSupport = () => {
         return;
       }
 
-      showNotification(
-        "success",
-        `Message sent successfully!\nWe will contact you at ${formData.email} within 24 hours.`
-      );
+      showNotification("success", `Message sent successfully!\nWe will contact you at ${formData.email} within 24 hours.`);
 
       setFormData((prev) => ({
         ...prev,
@@ -313,7 +351,6 @@ const ContactSupport = () => {
         message: "",
       }));
     } catch (err) {
-      console.error("Support send error:", err);
       showNotification("error", "Network/Server error. Please try again.");
     } finally {
       setSending(false);
@@ -504,7 +541,6 @@ const ContactSupport = () => {
               </div>
             </div>
 
-            {/* FAQ Section */}
             <div className="faq-section">
               <h2 className="section-title">
                 <i className="fas fa-question-circle"></i> Frequently Asked Questions
@@ -535,15 +571,10 @@ const ContactSupport = () => {
         <p>© 2024 - Online Student Out-Pass System. All rights reserved.</p>
       </footer>
 
-      {/* ✅ Responsive Toast Notification */}
       {notification.show && (
         <div className={`notification ${notification.type}`} role="alert" aria-live="polite">
           <div className="notification-icon">
-            <i
-              className={`fas fa-${
-                notification.type === "success" ? "check-circle" : "exclamation-circle"
-              }`}
-            ></i>
+            <i className={`fas fa-${notification.type === "success" ? "check-circle" : "exclamation-circle"}`}></i>
           </div>
 
           <div className="notification-text">
