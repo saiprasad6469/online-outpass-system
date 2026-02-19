@@ -1,24 +1,12 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
-=======
-// src/components/AdminSignup.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import "../styles/Auth.css";
-import MessageAlert from "./MessageAlert";
-import LoadingSpinner from "./LoadingSpinner";
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
 
 const AdminSignup = () => {
   const navigate = useNavigate();
 
-<<<<<<< HEAD
   // ✅ Department dropdown options
   const DEPARTMENTS = ['CSE','CSD','CSM','CSC','EEE','ECE','MECH','CIVIL','MBA','IT'];
 
@@ -297,217 +285,6 @@ const AdminSignup = () => {
           <p>Create administrative account for Out-Pass System</p>
         </div>
 
-=======
-  const [formData, setFormData] = useState({
-    adminName: "",
-    adminId: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    department: "",
-    year: "",
-    section: "",
-    agreeTerms: false,
-  });
-
-  const [passwordStrength, setPasswordStrength] = useState("");
-  const [passwordMatch, setPasswordMatch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-
-    // Check password strength
-    if (name === "password") {
-      checkPasswordStrength(value);
-    }
-
-    // Check password match
-    if (name === "password" || name === "confirmPassword") {
-      // Use next values (because setState is async)
-      const nextPassword = name === "password" ? value : formData.password;
-      const nextConfirm = name === "confirmPassword" ? value : formData.confirmPassword;
-      checkPasswordMatch(nextPassword, nextConfirm);
-    }
-  };
-
-  const checkPasswordStrength = (password) => {
-    let strength = "";
-    let strengthClass = "";
-
-    if (password.length === 0) {
-      strength = "";
-    } else if (password.length < 8) {
-      strength = "Weak - Use at least 8 characters for admin accounts";
-      strengthClass = "weak";
-    } else if (password.length < 12) {
-      strength = "Medium - Good start";
-      strengthClass = "medium";
-    } else {
-      const hasUpperCase = /[A-Z]/.test(password);
-      const hasLowerCase = /[a-z]/.test(password);
-      const hasNumbers = /\d/.test(password);
-      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-      let complexity = 0;
-      if (hasUpperCase) complexity++;
-      if (hasLowerCase) complexity++;
-      if (hasNumbers) complexity++;
-      if (hasSpecialChar) complexity++;
-
-      if (complexity >= 4) {
-        strength = "Strong - Excellent admin password!";
-        strengthClass = "strong";
-      } else if (complexity >= 3) {
-        strength = "Medium - Add more complexity for better security";
-        strengthClass = "medium";
-      } else {
-        strength = "Weak - Add uppercase, numbers, and special characters";
-        strengthClass = "weak";
-      }
-    }
-
-    setPasswordStrength({ text: strength, class: strengthClass });
-  };
-
-  const checkPasswordMatch = (password, confirmPassword) => {
-    if (!confirmPassword || confirmPassword.length === 0) {
-      setPasswordMatch({ text: "", class: "" });
-    } else if (password === confirmPassword) {
-      setPasswordMatch({ text: "✓ Passwords match", class: "strong" });
-    } else {
-      setPasswordMatch({ text: "✗ Passwords do not match", class: "weak" });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!API_BASE_URL) {
-      setMessage({
-        text: "API base URL missing. Set REACT_APP_API_BASE_URL in Render frontend env and redeploy.",
-        type: "error",
-      });
-      return;
-    }
-
-    // Required check
-    if (
-      !formData.adminName ||
-      !formData.adminId ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.password ||
-      !formData.confirmPassword ||
-      !formData.department ||
-      !formData.year ||
-      !formData.section
-    ) {
-      setMessage({ text: "Please fill in all required fields", type: "error" });
-      return;
-    }
-
-    if (!formData.agreeTerms) {
-      setMessage({ text: "Please accept the Terms to continue", type: "error" });
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setMessage({ text: "Passwords do not match", type: "error" });
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      // ✅ safe fetch + safe parse
-      const response = await fetch(`${API_BASE_URL}/api/admin/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          adminName: formData.adminName,
-          adminId: formData.adminId,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          department: formData.department,
-          year: formData.year,
-          section: formData.section,
-        }),
-      });
-
-      const raw = await response.text();
-      let data = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        data = { success: false, message: raw || "Server returned non-JSON response" };
-      }
-
-      if (!response.ok || !data.success) {
-        setMessage({
-          text: data.message || `Admin registration failed (${response.status})`,
-          type: "error",
-        });
-        return;
-      }
-
-      setMessage({
-        text: `Admin account created successfully! Welcome ${formData.adminName}!`,
-        type: "success",
-      });
-
-      if (data.token) localStorage.setItem("adminToken", data.token);
-      if (data.user) localStorage.setItem("adminUser", JSON.stringify(data.user));
-      localStorage.setItem("role", "admin");
-
-      setFormData({
-        adminName: "",
-        adminId: "",
-        email: "",
-        phone: "",
-        password: "",
-        confirmPassword: "",
-        department: "",
-        year: "",
-        section: "",
-        agreeTerms: false,
-      });
-      setPasswordStrength("");
-      setPasswordMatch("");
-
-      setTimeout(() => navigate("/admin-dashboard", { replace: true }), 1200);
-    } catch (error) {
-      setMessage({
-        text: error.message || "Cannot connect to server. Check backend URL + CORS.",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="auth-container">
-      <div className="signup-container">
-        <div className="signup-header">
-          <i className="fas fa-user-shield"></i>
-          <h1>Admin Registration</h1>
-          <p>Create administrative account for Out-Pass System</p>
-        </div>
-
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
         <div className="signup-body">
           <form id="adminSignupForm" onSubmit={handleSubmit}>
             <div className="form-row">
@@ -563,12 +340,8 @@ const AdminSignup = () => {
                   />
                 </div>
                 <div className="email-hint">
-<<<<<<< HEAD
                   <i className="fas fa-info-circle"></i> Must use HITAM official email ending with
                   @hitam.org
-=======
-                  <i className="fas fa-info-circle"></i> Must end with @hitam.org
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                 </div>
               </div>
 
@@ -590,13 +363,8 @@ const AdminSignup = () => {
               </div>
             </div>
 
-<<<<<<< HEAD
             <div className="form-row">
               {/* ✅ UPDATED: Department as selection field */}
-=======
-            {/* ✅ Department SELECT (UPDATED) */}
-            <div className="form-row">
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
               <div className="form-group">
                 <label htmlFor="department">Department</label>
                 <div className="input-with-icon">
@@ -610,23 +378,11 @@ const AdminSignup = () => {
                     onChange={handleChange}
                   >
                     <option value="">Select Department</option>
-<<<<<<< HEAD
                     {DEPARTMENTS.map((dep) => (
                       <option key={dep} value={dep}>
                         {dep}
                       </option>
                     ))}
-=======
-                    <option value="CSE">CSE</option>
-                    <option value="CSD">CSD</option>
-                    <option value="CSM">CSM</option>
-                    <option value="IOT">IOT</option>
-                    <option value="CSC">CSC</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="ECE">ECE</option>
-                    <option value="CIVIL">CIVIL</option>
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                   </select>
                 </div>
               </div>
@@ -653,10 +409,6 @@ const AdminSignup = () => {
               </div>
             </div>
 
-<<<<<<< HEAD
-=======
-            {/* Full-width Section Field */}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
             <div className="form-row full-width-section">
               <div className="form-group full-width">
                 <label htmlFor="section">Section</label>
@@ -698,11 +450,7 @@ const AdminSignup = () => {
                     onChange={handleChange}
                   />
                 </div>
-<<<<<<< HEAD
                 {passwordStrength.text && (
-=======
-                {passwordStrength?.text && (
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                   <div className={`password-strength ${passwordStrength.class}`}>
                     {passwordStrength.text}
                   </div>
@@ -724,11 +472,7 @@ const AdminSignup = () => {
                     onChange={handleChange}
                   />
                 </div>
-<<<<<<< HEAD
                 {passwordMatch.text && (
-=======
-                {passwordMatch?.text && (
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                   <div className={`password-strength ${passwordMatch.class}`}>
                     {passwordMatch.text}
                   </div>
@@ -746,16 +490,9 @@ const AdminSignup = () => {
                 onChange={handleChange}
               />
               <label htmlFor="agreeTerms">
-<<<<<<< HEAD
                 I agree to the <a href="#">Administrative Terms of Service</a> and{' '}
                 <a href="#">Security Policy</a> of the Online Student Out-Pass System. I understand
                 that I will have elevated access privileges.
-=======
-                I agree to the{" "}
-                <span style={{ textDecoration: "underline" }}>Administrative Terms of Service</span>{" "}
-                and{" "}
-                <span style={{ textDecoration: "underline" }}>Security Policy</span>.
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
               </label>
             </div>
 
@@ -774,11 +511,7 @@ const AdminSignup = () => {
 
           <div className="login-link-container">
             <p>
-<<<<<<< HEAD
               Already have an admin account?{' '}
-=======
-              Already have an admin account?{" "}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
               <Link to="/admin-login" className="login-link">
                 Login here
               </Link>

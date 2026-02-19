@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useRef, useEffect, useState } from "react";
 import "../styles/Dashboard.css";
 
@@ -13,22 +12,6 @@ const ProfileModal = ({
   handleAvatarChange,
   handleProfileSubmit,
   updateInitials,
-=======
-import React, { useRef, useEffect, useState } from 'react';
-import '../styles/Dashboard.css';
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-const ProfileModal = ({ 
-    user, 
-    setUser, 
-    avatarPreview, 
-    setAvatarPreview, 
-    showProfileModal, 
-    setShowProfileModal, 
-    avatarUploadRef,
-    handleAvatarChange,
-    handleProfileSubmit,
-    updateInitials 
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
 }) => {
   const profileModalRef = useRef(null);
   const [sections, setSections] = useState([]);
@@ -87,7 +70,6 @@ const ProfileModal = ({
   // Default sections in case API fails
   const getDefaultSections = () => ["A", "B", "C", "D", "E", "F"];
 
-<<<<<<< HEAD
   // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -98,37 +80,6 @@ const ProfileModal = ({
       ) {
         setShowProfileModal(false);
       }
-=======
-            const response = await fetch('${API_BASE_URL}/api/students/sections', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    setSections(data.sections || []);
-                } else {
-                    console.error('Failed to fetch sections:', data.message);
-                    // Fallback to default sections if API fails
-                    setSections(getDefaultSections());
-                }
-            } else {
-                console.error('Failed to fetch sections:', response.status);
-                // Fallback to default sections
-                setSections(getDefaultSections());
-            }
-        } catch (error) {
-            console.error('Error fetching sections:', error);
-            // Fallback to default sections
-            setSections(getDefaultSections());
-        } finally {
-            setLoading(false);
-        }
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
     };
 
     if (showProfileModal) {

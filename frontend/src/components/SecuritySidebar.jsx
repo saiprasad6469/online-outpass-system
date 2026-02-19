@@ -1,34 +1,34 @@
 import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "../styles/Dashboard.css";
 
 const SecuritySidebar = ({ isMobileOpen, onClose }) => {
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Check if current path matches the link
-  const isActive = (path) =>
-    location.pathname === path || location.pathname.startsWith(path + "/");
+  const isActive = (path) => {
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
+  };
 
   // Close sidebar when clicking on link in mobile view
   const handleLinkClick = () => {
-    if (window.innerWidth <= 768 && onClose) onClose();
+    if (window.innerWidth <= 768 && onClose) {
+      onClose();
+    }
   };
 
-  // ✅ Proper logout (SPA navigation)
-  const handleLogout = () => {
-    if (!window.confirm("Are you sure you want to logout?")) return;
-
-    localStorage.removeItem("securityToken");
-    localStorage.removeItem("securityUser");
-    localStorage.removeItem("role");
-    sessionStorage.removeItem("securityToken");
-    sessionStorage.removeItem("securityUser");
-
-    handleLinkClick(); // close sidebar on mobile
-    navigate("/security-login", { replace: true });
-
-    // Optional (strong reset): window.location.reload();
+  // Handle logout
+  const handleLogout = (e) => {
+    e.preventDefault();
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("securityToken");
+      localStorage.removeItem("securityUser");
+      sessionStorage.removeItem("securityToken");
+      sessionStorage.removeItem("securityUser");
+      window.location.href = "/security-login";
+    }
   };
 
   return (
@@ -75,11 +75,14 @@ const SecuritySidebar = ({ isMobileOpen, onClose }) => {
             </Link>
           </li>
 
-          {/* ✅ Logout */}
+          {/* Logout */}
           <li>
             <a
-              type="button"
-              onClick={handleLogout}
+              href="#"
+              onClick={(e) => {
+                handleLogout(e);
+                handleLinkClick();
+              }}
               className="logout-link"
             >
               <i className="fas fa-sign-out-alt"></i>

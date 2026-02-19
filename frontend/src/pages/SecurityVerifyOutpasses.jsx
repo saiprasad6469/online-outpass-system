@@ -4,18 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import SecuritySidebar from "../components/SecuritySidebar";
 import "../styles/Dashboard.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
-// ✅ Change this if your backend mount path differs
-const GUARD_API_PREFIX = "/api/guard";
-
-// ✅ Safe URL join (prevents double slashes)
-const apiUrl = (path) => {
-  if (!API_BASE_URL) return null;
-  const base = API_BASE_URL.replace(/\/+$/, "");
-  const p = String(path || "").startsWith("/") ? path : `/${path}`;
-  return `${base}${p}`;
-};
+const API_BASE = "http://localhost:5000";
+const GUARD_BASE = `${API_BASE}/api/guard`; // ✅ change if your mount path is different
 
 const SecurityVerifyOutpasses = () => {
   const navigate = useNavigate();
@@ -169,23 +159,15 @@ const SecurityVerifyOutpasses = () => {
       return;
     }
 
-    const url = apiUrl(`${GUARD_API_PREFIX}/verify/search?q=${encodeURIComponent(q)}`);
-    if (!url) {
-      setMessage({
-        type: "error",
-        text: "API URL missing. Set REACT_APP_API_BASE_URL in Render and redeploy.",
-      });
-      return;
-    }
-
     setLoading(true);
     setResult(null);
     setMessage(null);
 
     try {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${GUARD_BASE}/verify/search?q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       const text = await res.text();
       let data = {};
@@ -229,18 +211,9 @@ const SecurityVerifyOutpasses = () => {
     const token = getToken();
     if (!token) return clearAndRedirect();
 
-    const url = apiUrl(`${GUARD_API_PREFIX}/outpasses/${result._id}/out-status`);
-    if (!url) {
-      setMessage({
-        type: "error",
-        text: "API URL missing. Set REACT_APP_API_BASE_URL in Render and redeploy.",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      const res = await fetch(url, {
+      const res = await fetch(`${GUARD_BASE}/outpasses/${result._id}/out-status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

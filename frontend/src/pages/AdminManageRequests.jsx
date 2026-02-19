@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 import "../styles/ManageRequests.css";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const API_BASE = "http://localhost:5000";
 
@@ -133,11 +132,7 @@ const AdminManageRequests = () => {
     if (!token) return;
 
     try {
-<<<<<<< HEAD
       const res = await fetch(`${API_BASE}/api/admin/outpasses`, {
-=======
-      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses`, {
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -234,11 +229,7 @@ const AdminManageRequests = () => {
     if (!filePath) return null;
     if (/^https?:\/\//i.test(filePath)) return filePath;
     const normalized = filePath.startsWith("/") ? filePath : `/${filePath}`;
-<<<<<<< HEAD
     return `${API_BASE}${normalized}`;
-=======
-    return `${API_BASE_URL}${normalized}`;
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
   };
 
   /* ===================== NOTES VALIDATION ===================== */
@@ -269,7 +260,6 @@ const AdminManageRequests = () => {
 
     setSavingNotes(true);
     try {
-<<<<<<< HEAD
       const res = await fetch(`${API_BASE}/api/admin/outpasses/${selectedRequest._id}/notes`, {
         method: "PATCH",
         headers: {
@@ -278,19 +268,6 @@ const AdminManageRequests = () => {
         },
         body: JSON.stringify({ adminNotes: (adminNotes || "").trim() }),
       });
-=======
-      const res = await fetch(
-        `${API_BASE_URL}/api/admin/outpasses/${outpassId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus }), // "Approved" | "Rejected" | "Pending"
-        }
-      );
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
 
       const text = await res.text();
       let data = {};

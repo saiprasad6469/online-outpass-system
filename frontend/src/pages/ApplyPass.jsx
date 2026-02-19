@@ -6,7 +6,6 @@ import Sidebar from "../components/Sidebar";
 import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/ApplyPass.css";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const ApplyPass = () => {
   const navigate = useNavigate();
@@ -87,90 +86,6 @@ const ApplyPass = () => {
 
   const closeNotification = () => setNotification({ show: false, type: "", message: "" });
 
-<<<<<<< HEAD
-=======
-  // Check authentication
-  const checkAuthentication = async () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (!token) {
-      navigate("/student-login");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json();
-
-      if (!data.success || !data.isAuthenticated) {
-        clearStorageAndRedirect();
-        return;
-      }
-
-      if (data.user) {
-        const updatedUser = {
-          firstName: data.user.firstName || "",
-          lastName: data.user.lastName || "",
-          studentId: data.user.studentId || "",
-          email: data.user.email || "",
-          phone: data.user.phone || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          initials:
-            data.user.initials ||
-            ((data.user.firstName?.charAt(0) || "J") + (data.user.lastName?.charAt(0) || "D")).toUpperCase(),
-        };
-
-        setUser(updatedUser);
-
-        // Pre-fill form
-        setFormData((prev) => ({
-          ...prev,
-          fullName: `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim(),
-          rollNumber: data.user.studentId || "",
-          department: data.user.department || "",
-          year: data.user.year || "",
-          section: data.user.section || "",
-          contactNumber: data.user.phone || "",
-        }));
-      }
-    } catch (error) {
-      console.error("Authentication error:", error);
-
-      const storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "{}");
-
-      if (storedUser.firstName && storedUser.studentId) {
-        setUser((prev) => ({
-          ...prev,
-          ...storedUser,
-          initials: ((storedUser.firstName?.charAt(0) || "J") + (storedUser.lastName?.charAt(0) || "D")).toUpperCase(),
-        }));
-
-        setFormData((prev) => ({
-          ...prev,
-          fullName: `${storedUser.firstName || ""} ${storedUser.lastName || ""}`.trim(),
-          rollNumber: storedUser.studentId || "",
-          department: storedUser.department || "",
-          year: storedUser.year || "",
-          section: storedUser.section || "",
-          contactNumber: storedUser.phone || "",
-        }));
-      } else {
-        clearStorageAndRedirect();
-      }
-    }
-  };
-
-  // Clear storage and redirect
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
   const clearStorageAndRedirect = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -244,7 +159,7 @@ const ApplyPass = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/students/profile`, {
+      const response = await fetch("http://localhost:5000/api/students/profile", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
@@ -331,7 +246,7 @@ const ApplyPass = () => {
     if (!token) return showNotification("error", "You need to be logged in to update profile");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
+      const response = await fetch("http://localhost:5000/api/students/update-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updatedData),
@@ -361,7 +276,7 @@ const ApplyPass = () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     try {
       if (token) {
-        await fetch(`${API_BASE_URL}/api/students/logout`, {
+        await fetch("http://localhost:5000/api/students/logout", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -416,7 +331,7 @@ const ApplyPass = () => {
     selectedFiles.forEach((file) => submitFormData.append("documents", file));
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/outpass/apply`, {
+      const response = await fetch("http://localhost:5000/api/outpass/apply", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: submitFormData,

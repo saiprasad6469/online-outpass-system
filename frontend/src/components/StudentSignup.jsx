@@ -1,19 +1,12 @@
-// src/components/StudentSignup.jsx
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import "../styles/Auth.css";
-import MessageAlert from "./MessageAlert";
-import LoadingSpinner from "./LoadingSpinner";
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
-const DEPARTMENTS = ["CSE", "CSD", "CSM", "IOT", "CSC", "EEE", "MECH", "ECE", "CIVIL"];
-const SECTIONS = ["A", "B", "C", "D", "E", "F"];
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import '../styles/Auth.css';
+import MessageAlert from './MessageAlert';
+import LoadingSpinner from './LoadingSpinner';
 
 const StudentSignup = () => {
   const navigate = useNavigate();
 
-<<<<<<< HEAD
   const DEPARTMENTS = ['CSE','CSD','CSM','CSC','EEE','ECE','MECH','CIVIL','MBA','IT'];
   const YEAR_SEMESTERS = ['1-1','1-2','2-1','2-2','3-1','3-2','4-1','4-2'];
   const SECTIONS = ['A','B','C','D','E','F'];
@@ -276,238 +269,6 @@ const StudentSignup = () => {
           <p>Create your out-pass account</p>
         </div>
 
-=======
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    studentId: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    department: "",
-    yearSemester: "",
-    section: "",
-    agreeTerms: false,
-  });
-
-  const [passwordStrength, setPasswordStrength] = useState("");
-  const [passwordMatch, setPasswordMatch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-
-  useEffect(() => {
-    checkPasswordMatch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.password, formData.confirmPassword]);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    const updatedFormData = {
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    };
-
-    setFormData(updatedFormData);
-
-    if (name === "password") {
-      checkPasswordStrength(value);
-    }
-  };
-
-  const checkPasswordStrength = (password) => {
-    let strength = "";
-    let strengthClass = "";
-
-    if (password.length === 0) {
-      strength = "";
-    } else if (password.length < 6) {
-      strength = "Weak - Use at least 6 characters";
-      strengthClass = "weak";
-    } else if (password.length < 10) {
-      strength = "Medium - Good start";
-      strengthClass = "medium";
-    } else {
-      const hasUpperCase = /[A-Z]/.test(password);
-      const hasLowerCase = /[a-z]/.test(password);
-      const hasNumbers = /\d/.test(password);
-      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-      let complexity = 0;
-      if (hasUpperCase) complexity++;
-      if (hasLowerCase) complexity++;
-      if (hasNumbers) complexity++;
-      if (hasSpecialChar) complexity++;
-
-      if (complexity >= 3) {
-        strength = "Strong - Excellent password!";
-        strengthClass = "strong";
-      } else {
-        strength = "Medium - Add numbers or special characters";
-        strengthClass = "medium";
-      }
-    }
-
-    setPasswordStrength({ text: strength, class: strengthClass });
-  };
-
-  const checkPasswordMatch = () => {
-    const password = formData.password;
-    const confirmPassword = formData.confirmPassword;
-
-    if (confirmPassword.length === 0) {
-      setPasswordMatch({ text: "", class: "" });
-    } else if (password === confirmPassword) {
-      setPasswordMatch({ text: "✓ Passwords match", class: "strong" });
-    } else {
-      setPasswordMatch({ text: "✗ Passwords do not match", class: "weak" });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!API_BASE_URL) {
-      setMessage({
-        text: "API base URL missing. Set REACT_APP_API_BASE_URL in Render Environment Variables and redeploy frontend.",
-        type: "error",
-      });
-      return;
-    }
-
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "studentId",
-      "password",
-      "confirmPassword",
-      "department",
-      "yearSemester",
-      "section",
-    ];
-
-    const missingFields = requiredFields.filter((field) => !formData[field]);
-    if (missingFields.length > 0) {
-      setMessage({
-        text: `Please fill all required fields: ${missingFields.join(", ")}`,
-        type: "error",
-      });
-      return;
-    }
-
-    if (!formData.agreeTerms) {
-      setMessage({ text: "Please agree to the Terms of Service", type: "error" });
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setMessage({ text: "Passwords do not match", type: "error" });
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          studentId: formData.studentId,
-          phone: formData.phone || "",
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          department: formData.department,
-          yearSemester: formData.yearSemester,
-          section: formData.section,
-        }),
-      });
-
-      console.log("📥 Signup status:", response.status);
-      console.log("📥 Content-Type:", response.headers.get("content-type"));
-
-      const raw = await response.text();
-      console.log("📥 RAW RESPONSE:", raw);
-
-      let data = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        data = {
-          success: false,
-          message: raw?.slice(0, 200) || "Server returned non-JSON response",
-        };
-      }
-
-      if (!response.ok || !data.success) {
-        setMessage({
-          text: data.message || "Registration failed. Please try again.",
-          type: "error",
-        });
-        return;
-      }
-
-      setMessage({
-        text: `Account created successfully! Welcome ${formData.firstName} ${formData.lastName}!`,
-        type: "success",
-      });
-
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        sessionStorage.setItem("token", data.token);
-      }
-
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        sessionStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-      setFormData({
-        firstName: "",
-        lastName: "",
-        studentId: "",
-        phone: "",
-        password: "",
-        confirmPassword: "",
-        department: "",
-        yearSemester: "",
-        section: "",
-        agreeTerms: false,
-      });
-      setPasswordStrength("");
-      setPasswordMatch("");
-
-      setTimeout(() => {
-        navigate("/student-dashboard");
-      }, 1500);
-    } catch (error) {
-      console.error("❌ Signup error:", error);
-      setMessage({
-        text: "Cannot connect to server. Please check backend URL + CORS and redeploy.",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="auth-container">
-      <div className="signup-container">
-        <div className="signup-header">
-          <div className="header-icon blue-icon">
-            <i className="fas fa-user-plus"></i>
-          </div>
-          <h1 className="blue-heading">Student Registration</h1>
-          <p>Create your out-pass account</p>
-        </div>
-
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
         <div className="signup-body">
           <form id="signupForm" onSubmit={handleSubmit}>
             <div className="form-row">
@@ -595,19 +356,11 @@ const StudentSignup = () => {
                   <div className={`password-strength ${passwordStrength.class}`}>
                     <i
                       className={`fas fa-${
-<<<<<<< HEAD
                         passwordStrength.class === 'weak'
                           ? 'exclamation-triangle'
                           : passwordStrength.class === 'medium'
                           ? 'check-circle'
                           : 'shield-alt'
-=======
-                        passwordStrength.class === "weak"
-                          ? "exclamation-triangle"
-                          : passwordStrength.class === "medium"
-                          ? "check-circle"
-                          : "shield-alt"
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                       }`}
                     ></i>
                     {passwordStrength.text}
@@ -634,11 +387,7 @@ const StudentSignup = () => {
                   <div className={`password-match ${passwordMatch.class}`}>
                     <i
                       className={`fas fa-${
-<<<<<<< HEAD
                         passwordMatch.class === 'weak' ? 'times-circle' : 'check-circle'
-=======
-                        passwordMatch.class === "weak" ? "times-circle" : "check-circle"
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                       }`}
                     ></i>
                     {passwordMatch.text}
@@ -647,11 +396,7 @@ const StudentSignup = () => {
               </div>
             </div>
 
-<<<<<<< HEAD
             {/* Department + YearSemester as dropdowns */}
-=======
-            {/* ✅ UPDATED: Department as SELECT */}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="department" className="blue-label">
@@ -666,15 +411,9 @@ const StudentSignup = () => {
                   onChange={handleChange}
                 >
                   <option value="">Select Department</option>
-<<<<<<< HEAD
                   {DEPARTMENTS.map((dep) => (
                     <option key={dep} value={dep}>
                       {dep}
-=======
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                     </option>
                   ))}
                 </select>
@@ -684,7 +423,6 @@ const StudentSignup = () => {
                 <label htmlFor="yearSemester" className="blue-label">
                   <i className="fas fa-calendar-alt blue-icon"></i> Year-Semester *
                 </label>
-<<<<<<< HEAD
                 <select
                   id="yearSemester"
                   name="yearSemester"
@@ -705,25 +443,6 @@ const StudentSignup = () => {
             </div>
 
             {/* Section as dropdown */}
-=======
-                <input
-                  type="text"
-                  id="yearSemester"
-                  name="yearSemester"
-                  className="form-control"
-                  placeholder="e.g., 2-1, 3-2, 4-1"
-                  required
-                  value={formData.yearSemester}
-                  onChange={handleChange}
-                  pattern="[0-9]{1,2}-[1-2]"
-                  title="Format: Year-Semester (e.g., 1-1, 2-2, 3-1)"
-                />
-                <div className="form-help-text">Format: Year-Semester (e.g., 2-1, 3-2)</div>
-              </div>
-            </div>
-
-            {/* ✅ UPDATED: Section as SELECT (A-F) */}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
             <div className="form-group">
               <label htmlFor="section" className="blue-label">
                 <i className="fas fa-users blue-icon"></i> Section *
@@ -739,19 +458,11 @@ const StudentSignup = () => {
                 <option value="">Select Section</option>
                 {SECTIONS.map((sec) => (
                   <option key={sec} value={sec}>
-<<<<<<< HEAD
                     {sec}
                   </option>
                 ))}
               </select>
               <div className="form-help-text">Select your section (A - F)</div>
-=======
-                    Section {sec}
-                  </option>
-                ))}
-              </select>
-              <div className="form-help-text">Choose your section (A-F)</div>
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
             </div>
 
             <div className="terms">
@@ -764,7 +475,6 @@ const StudentSignup = () => {
                 onChange={handleChange}
               />
               <label htmlFor="agreeTerms" className="blue-label">
-<<<<<<< HEAD
                 <i className="fas fa-file-contract blue-icon"></i> I agree to the{' '}
                 <a href="#" className="blue-link">
                   Terms of Service
@@ -773,16 +483,6 @@ const StudentSignup = () => {
                 <a href="#" className="blue-link">
                   Privacy Policy
                 </a>{' '}
-=======
-                <i className="fas fa-file-contract blue-icon"></i> I agree to the{" "}
-                <span className="blue-link" style={{ textDecoration: "underline" }}>
-                  Terms of Service
-                </span>{" "}
-                and{" "}
-                <span className="blue-link" style={{ textDecoration: "underline" }}>
-                  Privacy Policy
-                </span>{" "}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
                 of the Online Student Out-Pass System.
               </label>
             </div>
@@ -802,11 +502,7 @@ const StudentSignup = () => {
 
           <div className="login-link-container">
             <p>
-<<<<<<< HEAD
               <i className="fas fa-sign-in-alt blue-icon"></i> Already have an account?{' '}
-=======
-              <i className="fas fa-sign-in-alt blue-icon"></i> Already have an account?{" "}
->>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
               <Link to="/student-login" className="login-link blue-link">
                 Login here
               </Link>

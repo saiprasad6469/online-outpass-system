@@ -4,7 +4,7 @@ import "../styles/Auth.css";
 import MessageAlert from "./MessageAlert";
 import LoadingSpinner from "./LoadingSpinner";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_BASE = "http://localhost:5000";
 
 const SecurityLogin = () => {
   const navigate = useNavigate();
@@ -22,20 +22,13 @@ const SecurityLogin = () => {
     const remember = localStorage.getItem("rememberSecurity");
     const savedId = localStorage.getItem("savedSecurityId");
     if (remember === "true" && savedId) {
-      setFormData((prev) => ({
-        ...prev,
-        securityId: savedId,
-        rememberMe: true,
-      }));
+      setFormData((prev) => ({ ...prev, securityId: savedId, rememberMe: true }));
     }
   }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
   const parseResponse = async (res) => {
@@ -43,23 +36,12 @@ const SecurityLogin = () => {
     try {
       return { ok: res.ok, data: JSON.parse(text) };
     } catch {
-      return {
-        ok: false,
-        data: { success: false, message: text || "Server returned non-JSON response" },
-      };
+      return { ok: false, data: { success: false, message: text || "Server returned non-JSON response" } };
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!API_BASE_URL) {
-      setMessage({
-        text: "Frontend config missing: REACT_APP_API_BASE_URL is not set in Render Environment Variables.",
-        type: "error",
-      });
-      return;
-    }
 
     if (!formData.securityId || !formData.password) {
       setMessage({ text: "Please fill in all fields", type: "error" });
@@ -70,12 +52,9 @@ const SecurityLogin = () => {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/security/login`, {
+      const res = await fetch(`${API_BASE}/api/security/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           securityId: formData.securityId.trim(),
           password: formData.password,
@@ -89,7 +68,7 @@ const SecurityLogin = () => {
         return;
       }
 
-      // store security session keys
+      // ✅ store security session keys
       localStorage.setItem("securityToken", data.token);
       localStorage.setItem("securityUser", JSON.stringify(data.user));
       sessionStorage.setItem("securityToken", data.token);
@@ -108,7 +87,7 @@ const SecurityLogin = () => {
       setTimeout(() => navigate("/security-dashboard"), 700);
     } catch (err) {
       setMessage({
-        text: `Cannot connect to server. Please check backend URL: ${API_BASE_URL}`,
+        text: "Cannot connect to server. Make sure backend is running on http://localhost:5000",
         type: "error",
       });
     } finally {
