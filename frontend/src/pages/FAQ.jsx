@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import ProfileModal from '../components/ProfileModal';
 import '../styles/Dashboard.css';
 import '../styles/FAQ.css';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const API_BASE = "http://localhost:5000";
 
@@ -34,6 +35,7 @@ const FAQ = () => {
   const [helpfulFeedback, setHelpfulFeedback] = useState({});
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
 
+<<<<<<< HEAD
   const avatarUploadRef = useRef(null);
 
   // FAQ Data (UNCHANGED)
@@ -170,6 +172,63 @@ const FAQ = () => {
       initials:
         u?.initials ||
         ((u?.firstName?.charAt(0) || 'J') + (u?.lastName?.charAt(0) || 'D')).toUpperCase(),
+=======
+    // Check authentication
+    const checkAuthentication = async () => {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        if (!token) {
+            navigate('/student-login');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success || !data.isAuthenticated) {
+                clearStorageAndRedirect();
+                return;
+            }
+            
+            // Update user info
+            if (data.user) {
+                const updatedUser = {
+                    firstName: data.user.firstName || '',
+                    lastName: data.user.lastName || '',
+                    studentId: data.user.studentId || '',
+                    email: data.user.email || '',
+                    phone: data.user.phone || '',
+                    department: data.user.department || '',
+                    year: data.user.year || '',
+                    initials: data.user.initials || 
+                        ((data.user.firstName?.charAt(0) || 'J') + (data.user.lastName?.charAt(0) || 'D')).toUpperCase()
+                };
+                setUser(updatedUser);
+            }
+            
+        } catch (error) {
+            console.error('Authentication error:', error);
+            // Use stored user data for demo
+            const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+            if (storedUser.firstName && storedUser.studentId) {
+                setUser(prev => ({
+                    ...prev,
+                    ...storedUser,
+                    initials: ((storedUser.firstName?.charAt(0) || 'J') + (storedUser.lastName?.charAt(0) || 'D')).toUpperCase()
+                }));
+            } else {
+                clearStorageAndRedirect();
+            }
+        }
+>>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
     };
 
     setUser(updatedUser);
@@ -274,8 +333,59 @@ const FAQ = () => {
       yearSemester: fd.get("yearSemester"),
     };
 
+<<<<<<< HEAD
     const token = getToken();
     if (!token) return showNotification('error', 'You need to be logged in to update profile');
+=======
+    // Load user data
+    const loadUserData = async () => {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        if (!token) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/students/profile`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.user) {
+                    const updatedUser = {
+                        firstName: data.user.firstName || '',
+                        lastName: data.user.lastName || '',
+                        studentId: data.user.studentId || '',
+                        email: data.user.email || '',
+                        phone: data.user.phone || '',
+                        department: data.user.department || '',
+                        year: data.user.year || '',
+                        initials: data.user.initials || 
+                            ((data.user.firstName?.charAt(0) || 'J') + (data.user.lastName?.charAt(0) || 'D')).toUpperCase()
+                    };
+                    setUser(updatedUser);
+                }
+            }
+        } catch (error) {
+            console.log('Using demo user data');
+            // Set demo data for testing
+            const demoUser = {
+                firstName: 'John',
+                lastName: 'Doe',
+                studentId: 'CS2023001',
+                email: 'john.doe@college.edu',
+                phone: '+91 9876543210',
+                department: 'Computer Science',
+                year: '3rd Year',
+                initials: 'JD'
+            };
+            setUser(demoUser);
+        }
+    };
+>>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
 
     try {
       const response = await fetch(`${API_BASE}/api/students/update-profile`, {
@@ -286,6 +396,7 @@ const FAQ = () => {
 
       const data = await response.json();
 
+<<<<<<< HEAD
       if (data.success && data.user) {
         hydrateFromUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -302,6 +413,83 @@ const FAQ = () => {
 
   const handleLogout = async () => {
     if (!window.confirm('Are you sure you want to logout?')) return;
+=======
+    // Handle profile form submit
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const updatedData = {
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            phone: formData.get('phone'),
+            department: formData.get('department'),
+            year: formData.get('year')
+        };
+        
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        if (!token) {
+            showNotification('error', 'You need to be logged in to update profile');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(updatedData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const updatedUser = {
+                    ...user,
+                    ...updatedData,
+                    initials: (updatedData.firstName.charAt(0) + updatedData.lastName.charAt(0)).toUpperCase()
+                };
+                setUser(updatedUser);
+                
+                localStorage.setItem('user', JSON.stringify(data.user || updatedUser));
+                sessionStorage.setItem('user', JSON.stringify(data.user || updatedUser));
+                
+                showNotification('success', 'Profile updated successfully!');
+                setShowProfileModal(false);
+            } else {
+                showNotification('error', 'Failed to update profile: ' + (data.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Update profile error:', error);
+            showNotification('error', 'Error updating profile. Please try again.');
+        }
+    };
+
+    // Handle logout
+    const handleLogout = async () => {
+        if (window.confirm('Are you sure you want to logout?')) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            
+            try {
+                if (token) {
+                    await fetch(`${API_BASE_URL}/api/students/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            } finally {
+                clearStorageAndRedirect();
+            }
+        }
+    };
+>>>>>>> 292eadad6e099cd6e5f0c9632ac49c93aceba504
 
     const token = getToken();
     try {

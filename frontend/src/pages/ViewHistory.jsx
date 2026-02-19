@@ -7,7 +7,8 @@ import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/ViewHistory.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 
 const ViewHistory = () => {
   const navigate = useNavigate();
@@ -123,7 +124,7 @@ const ViewHistory = () => {
     if (!token) return navigate("/student-login");
 
     try {
-      const response = await fetch(`${API_BASE}/api/students/check-auth`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
@@ -213,7 +214,7 @@ const ViewHistory = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/students/update-profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updatedData),
@@ -243,7 +244,7 @@ const ViewHistory = () => {
     const token = getToken();
     try {
       if (token) {
-        await fetch(`${API_BASE}/api/students/logout`, {
+        await fetch(`${API_BASE_URL}/api/students/logout`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -261,7 +262,7 @@ const ViewHistory = () => {
     if (!token) return navigate("/student-login");
 
     try {
-      const response = await fetch(`${API_BASE}/api/outpass/history`, {
+      const response = await fetch(`${API_BASE_URL}/api/outpass/history`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });

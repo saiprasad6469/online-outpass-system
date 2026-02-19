@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
-
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const AdminLogin = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -46,7 +46,7 @@ const AdminLogin = () => {
         setLoading(true);
         
         try {
-            const response = await fetch('http://localhost:5000/api/admin/login', {
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -57,7 +57,10 @@ const AdminLogin = () => {
                 })
             });
 
-            const data = await response.json();
+            const raw = await response.text();
+let data = raw ? JSON.parse(raw) : {};
+if (!response.ok || !data.success) throw new Error(data.message || "Login failed");
+localStorage.setItem("adminToken", data.token);
             
             if (data.success) {
                 setMessage({ text: 'Admin access granted! Redirecting to dashboard...', type: 'success' });
