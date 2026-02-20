@@ -35,6 +35,11 @@ app.use("/api/security", securityRoutes);
 const guardRoutes = require("./routes/guardRoutes");
 app.use("/api/guard", guardRoutes);
 
+app.use(cors({
+  origin: ["https://online-outpass-system-frontend.onrender.com"],
+  credentials: true
+}));
+
 /* ================= ROOT CHECK ================= */
 app.get("/", (req, res) => {
   res.send("🚀 Online Student Out-Pass Backend is running");
