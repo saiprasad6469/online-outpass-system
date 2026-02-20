@@ -4,6 +4,9 @@ import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
 
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
 const StudentSignup = () => {
   const navigate = useNavigate();
 
@@ -173,7 +176,7 @@ const StudentSignup = () => {
         section: formData.section,
       });
 
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +247,7 @@ const StudentSignup = () => {
 
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         setMessage({
-          text: 'Cannot connect to the server. Make sure backend is running on http://localhost:5000',
+          text: 'Cannot connect to the server. Make sure backend is running on ${API_BASE_URL}',
           type: 'error',
         });
       } else {

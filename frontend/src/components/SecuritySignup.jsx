@@ -4,7 +4,8 @@ import "../styles/Auth.css";
 import MessageAlert from "./MessageAlert";
 import LoadingSpinner from "./LoadingSpinner";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const SecuritySignup = () => {
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ const SecuritySignup = () => {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE}/api/security/signup`, {
+      const res = await fetch(`${API_BASE_URL}/api/security/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -159,7 +160,7 @@ const SecuritySignup = () => {
       setTimeout(() => navigate("/security-dashboard"), 700);
     } catch (err) {
       setMessage({
-        text: "Cannot connect to server. Make sure backend is running on http://localhost:5000",
+        text: "Cannot connect to server. Make sure backend is running on ${API_BASE_URL}",
         type: "error",
       });
     } finally {
