@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
-
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const AdminReports = () => {
   const navigate = useNavigate();
@@ -158,7 +158,7 @@ const AdminReports = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/outpasses`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

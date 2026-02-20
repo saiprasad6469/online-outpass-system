@@ -5,7 +5,8 @@ import AdminSidebar from "../components/AdminSidebar";
 import "../styles/Dashboard.css";
 import "../styles/ManageRequests.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const AdminManageRequests = () => {
   const navigate = useNavigate();
@@ -132,7 +133,7 @@ const AdminManageRequests = () => {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/outpasses`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -260,7 +261,7 @@ const AdminManageRequests = () => {
 
     setSavingNotes(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/outpasses/${selectedRequest._id}/notes`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses/${selectedRequest._id}/notes`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -337,7 +338,7 @@ const AdminManageRequests = () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/outpasses/${outpassMongoId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/outpasses/${outpassMongoId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

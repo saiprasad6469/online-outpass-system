@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import SecuritySidebar from "../components/SecuritySidebar";
 import "../styles/Dashboard.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 /**
  * ✅ Change this to your existing security routes prefix.
@@ -157,7 +158,7 @@ const SecurityOutpasses = () => {
 
     try {
       const res = await fetch(
-        `${API_BASE}${SECURITY_API_PREFIX}/outpasses?status=Approved`,
+        `${API_BASE_URL}${SECURITY_API_PREFIX}/outpasses?status=Approved`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -227,7 +228,7 @@ const SecurityOutpasses = () => {
       setUpdatingOutStatus(true);
 
       const res = await fetch(
-        `${API_BASE}${SECURITY_API_PREFIX}/outpasses/${id}/out-status`,
+        `${API_BASE_URL}${SECURITY_API_PREFIX}/outpasses/${id}/out-status`,
         {
           method: "PATCH",
           headers: {
