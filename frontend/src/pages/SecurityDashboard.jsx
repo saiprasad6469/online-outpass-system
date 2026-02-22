@@ -4,8 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SecuritySidebar from "../components/SecuritySidebar";
 import "../styles/Dashboard.css";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 // ✅ change this to your existing route name if needed
 // Example: "/api/guard" or "/api/securityPanel" etc.
@@ -181,7 +180,7 @@ const SecurityDashboard = () => {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}${SECURITY_API_PREFIX}/dashboard`, {
+      const res = await fetch(`${API_BASE}${SECURITY_API_PREFIX}/dashboard`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -233,7 +232,7 @@ const SecurityDashboard = () => {
       setUpdatingOutStatus(true);
 
       const res = await fetch(
-        `${API_BASE_URL}${SECURITY_API_PREFIX}/outpasses/${outpassId}/out-status`,
+        `${API_BASE}${SECURITY_API_PREFIX}/outpasses/${outpassId}/out-status`,
         {
           method: "PATCH",
           headers: {

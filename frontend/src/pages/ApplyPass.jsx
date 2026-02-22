@@ -7,8 +7,7 @@ import ProfileModal from "../components/ProfileModal";
 import "../styles/Dashboard.css";
 import "../styles/ApplyPass.css";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const ApplyPass = () => {
   const navigate = useNavigate();
@@ -134,7 +133,7 @@ const ApplyPass = () => {
     if (!token) return navigate("/student-login");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/students/check-auth`, {
+      const response = await fetch(`${API_BASE}/api/students/check-auth`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
@@ -162,7 +161,7 @@ const ApplyPass = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/students/profile`, {
+      const response = await fetch(`${API_BASE}/api/students/profile`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
@@ -249,7 +248,7 @@ const ApplyPass = () => {
     if (!token) return showNotification("error", "You need to be logged in to update profile");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/students/update-profile`, {
+      const response = await fetch(`${API_BASE}/api/students/update-profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(updatedData),
@@ -279,7 +278,7 @@ const ApplyPass = () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     try {
       if (token) {
-        await fetch(`${API_BASE_URL}/api/students/logout`, {
+        await fetch(`${API_BASE}/api/students/logout`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -334,7 +333,7 @@ const ApplyPass = () => {
     selectedFiles.forEach((file) => submitFormData.append("documents", file));
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/outpass/apply`, {
+      const response = await fetch(`${API_BASE}/api/outpass/apply`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: submitFormData,

@@ -4,8 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SecuritySidebar from "../components/SecuritySidebar";
 import "../styles/Dashboard.css";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 const GUARD_BASE = `${API_BASE_URL}/api/guard`; // ✅ change if your mount path is different
 
 const SecurityVerifyOutpasses = () => {
