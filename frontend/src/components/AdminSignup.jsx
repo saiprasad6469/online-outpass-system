@@ -4,8 +4,7 @@ import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
 import LoadingSpinner from './LoadingSpinner';
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 const AdminSignup = () => {
   const navigate = useNavigate();
@@ -198,7 +197,7 @@ const AdminSignup = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/register`, {
+      const response = await fetch(`${API_BASE}/api/admin/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

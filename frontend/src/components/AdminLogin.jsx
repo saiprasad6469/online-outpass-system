@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
 import MessageAlert from './MessageAlert';
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 const AdminLogin = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -47,7 +46,7 @@ const AdminLogin = () => {
         setLoading(true);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+            const response = await fetch(`${API_BASE}/api/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
