@@ -5,7 +5,7 @@ import SecuritySidebar from "../components/SecuritySidebar";
 import "../styles/Dashboard.css";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
-const GUARD_BASE = `${API_BASE_URL}/api/guard`; // ✅ change if your mount path is different
+const GUARD_BASE = `${API_BASE}/api/guard`; // ✅ change if your mount path is different
 
 const SecurityVerifyOutpasses = () => {
   const navigate = useNavigate();
